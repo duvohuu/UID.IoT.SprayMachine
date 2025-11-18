@@ -35,5 +35,4 @@ yarn.lock
 
 # Build artifacts
 build/
-uploads/
 logs/
