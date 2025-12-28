@@ -1,33 +1,30 @@
 import express from 'express';
+import { protect } from '../middlewares/auth.middleware.js';
 import {
     getSprayRealtimeData,
     getSprayDailyData,
     getSpray30DaysHistory,
     getSprayStatistics,
-    getSprayPieChartData
+    getSprayPieChartData,
+    handleMQTTUpdate, 
+    getMQTTConnectionStatus 
 } from '../controllers/sprayMachineController.js';
 
 const router = express.Router();
 
-/**
- * ========================================
- * SPRAY MACHINE ROUTES
- * ========================================
- */
+// ==================== GET ROUTES ====================
+// Tất cả routes đều cần authentication
+router.use(protect);
 
-// GET /api/spray-machine/realtime/:machineId
 router.get('/realtime/:machineId', getSprayRealtimeData);
-
-// GET /api/spray-machine/daily/:machineId
 router.get('/daily/:machineId', getSprayDailyData);
-
-// GET /api/spray-machine/history/:machineId
 router.get('/history/:machineId', getSpray30DaysHistory);
-
-// GET /api/spray-machine/statistics/:machineId
 router.get('/statistics/:machineId', getSprayStatistics);
-
-// GET /api/spray-machine/pie-chart/:machineId
 router.get('/pie-chart/:machineId', getSprayPieChartData);
+
+// ==================== POST ROUTES ====================
+// Endpoint để nhận MQTT data
+router.post('/mqtt-update/:machineId', handleMQTTUpdate);
+router.get('/mqtt-status', getMQTTConnectionStatus); 
 
 export default router;

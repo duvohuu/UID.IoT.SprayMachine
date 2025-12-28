@@ -1,6 +1,6 @@
 import {
     PlayArrow as RunningIcon,
-    PrecisionManufacturing as PrecisionIcon, // ✅ Sử dụng icon có sẵn
+    PrecisionManufacturing as PrecisionIcon, 
     Speed as SpeedIcon,
     Build as ToolIcon,
     Straighten as DimensionIcon,
@@ -10,9 +10,9 @@ import {
     Engineering as EngineeringIcon,
     Thermostat as TempIcon,
     Power as PowerIcon,
-    Assessment as CountIcon, // ✅ Alternative cho precision
-    Architecture as CoordinateIcon, // ✅ Alternative cho dimension
-    Settings as MaintenanceIcon // ✅ Alternative cho maintenance
+    Assessment as CountIcon, 
+    Architecture as CoordinateIcon, 
+    Settings as MaintenanceIcon 
 } from '@mui/icons-material';
 
 // MONITORING DATA - Hiển thị cho tất cả user
@@ -50,7 +50,7 @@ export const MONITORING_DATA_CONFIG = {
     },
     partCount: {
         title: 'Số chi tiết đã hoàn thành',
-        icon: CountIcon, // ✅ Thay PrecisionIcon
+        icon: CountIcon, 
         type: 'integer',
         unit: 'sản phẩm',
         range: '0 - 99999'
@@ -95,21 +95,21 @@ export const MONITORING_DATA_CONFIG = {
 export const ADMIN_DATA_CONFIG = {
     'coordinates.xAxis': {
         title: 'Vị trí trục X',
-        icon: CoordinateIcon, // ✅ Thay DimensionIcon
+        icon: CoordinateIcon, 
         type: 'float',
         unit: 'mm',
         range: '-999 - 999'
     },
     'coordinates.yAxis': {
         title: 'Vị trí trục Y',
-        icon: CoordinateIcon, // ✅ Thay DimensionIcon
+        icon: CoordinateIcon, 
         type: 'float',
         unit: 'mm',
         range: '-999 - 999'
     },
     'coordinates.zAxis': {
         title: 'Vị trí trục Z',
-        icon: CoordinateIcon, // ✅ Thay DimensionIcon
+        icon: CoordinateIcon, 
         type: 'float',
         unit: 'mm',
         range: '-999 - 999'
@@ -128,13 +128,13 @@ export const ADMIN_DATA_CONFIG = {
     },
     'maintenance.lastMaintenance': {
         title: 'Bảo trì lần cuối',
-        icon: MaintenanceIcon, // ✅ Thay ToolIcon
+        icon: MaintenanceIcon, 
         type: 'datetime',
         description: 'Thời gian bảo trì gần nhất'
     },
     'maintenance.nextMaintenance': {
         title: 'Bảo trì tiếp theo',
-        icon: MaintenanceIcon, // ✅ Thay ToolIcon
+        icon: MaintenanceIcon, 
         type: 'datetime',
         description: 'Thời gian bảo trì dự kiến'
     }

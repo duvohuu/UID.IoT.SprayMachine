@@ -111,7 +111,7 @@ const StatusPage = ({ user }) => {
             navigate(`/powder/${machine.machineId}`);
         } else if (machine.type === 'CNC Machine') {
             navigate(`/cnc/${machine.machineId}`);
-        } else if (machine.type === 'Spray Machine') {  // ✅ THÊM ĐIỀU HƯỚNG
+        } else if (machine.type === 'Spray Machine') {  
             navigate(`/spray/${machine.machineId}`);
         } else if (machine.type === 'Salt Filling Machine') {
             navigate(`/salt/${machine.machineId}`);
@@ -126,7 +126,6 @@ const StatusPage = ({ user }) => {
             console.log('🔄 Refreshing machine list after deletion...');
             console.log('   Deleted machine:', deletedMachine.machineId);
             
-            // ✅ FIX: Đọc đúng structure từ backend
             const result = await getMachines();
             const machines = result.data?.machines || [];
             

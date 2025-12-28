@@ -50,7 +50,6 @@ const addMachine = async () => {
         console.log(`✅ Created machine: ${machine.name} (${machine.machineId})`);
         console.log('   _id:', machine._id);
         console.log('   Type:', machine.type);
-        console.log('   IP:', machine.ip);
         console.log('   Location:', machine.location);
         console.log('   Status:', machine.status);
 

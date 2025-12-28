@@ -294,72 +294,72 @@ const MachineStatusCard = ({ machine, user, onClick, onDelete }) => {
 
                     {/* MACHINE INFO - Protocol và Type */}
                     <Box sx={{ mb: 1.5 }}>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'stretch' }}>
-                            {/* Protocol - Bên trái */}
-                            <Box sx={{ 
-                                p: 1.5, 
-                                borderRadius: 2, 
-                                backgroundColor: `${theme.palette.secondary.main}08`,
-                                border: `1px solid ${theme.palette.secondary.main}20`,
-                            }}>
-                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
-                                    <RouterIcon sx={{ fontSize: 16, color: 'secondary.main' }} />
-                                    <Typography variant="caption" sx={{ 
-                                        color: 'secondary.main', 
-                                        fontSize: '0.75rem',
-                                        fontWeight: 600 
-                                    }}>
-                                        Giao thức
-                                    </Typography>
-                                </Box>
-                                <Typography variant="body2" sx={{ 
-                                    fontWeight: 700, 
-                                    color: 'secondary.main', 
-                                    fontSize: '0.9rem' 
-                                }}>
-                                    {machine.topic ? 'MQTT' : 'N/A'}
-                                </Typography>
-                            </Box>
-                            
-                            {/* Machine Type */}
-                            <Box sx={{ 
-                                p: 1.5, 
-                                borderRadius: 2, 
-                                backgroundColor: `${theme.palette.primary.main}08`,
-                                border: `1px solid ${theme.palette.primary.main}20`,
-                            }}>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'stretch' }}>
+                                {/* Protocol - Bên trái */}
                                 <Box sx={{ 
-                                    display: 'flex', 
-                                    alignItems: 'center', 
-                                    gap: 1, 
-                                    mb: 0.5,
+                                    p: 1.5, 
+                                    borderRadius: 2, 
+                                    backgroundColor: `${theme.palette.secondary.main}08`,
+                                    border: `1px solid ${theme.palette.secondary.main}20`,
                                 }}>
-                                    <SettingsIcon sx={{ fontSize: 16, color: 'primary.main' }} />
-                                    <Typography variant="caption" sx={{ 
-                                        color: 'primary.main', 
-                                        fontSize: '0.75rem',
-                                        fontWeight: 600 
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+                                        <AccountIcon sx={{ fontSize: 16, color: 'secondary.main' }} />
+                                        <Typography variant="caption" sx={{ 
+                                            color: 'secondary.main', 
+                                            fontSize: '0.75rem',
+                                            fontWeight: 600 
+                                        }}>
+                                            Chủ sở hữu máy
+                                        </Typography>
+                                    </Box>
+                                    <Typography variant="body2" sx={{ 
+                                        fontWeight: 700, 
+                                        color: 'secondary.main', 
+                                        fontSize: '0.9rem' 
                                     }}>
-                                        Loại máy
+                                        {machine.userId || 'Chưa xác định chủ sở hữu'}
                                     </Typography>
-                                    
                                 </Box>
-                                <Typography variant="body2" sx={{ 
-                                    fontWeight: 700, 
-                                    color: 'primary.main', 
-                                    fontSize: '0.9rem',
-                                    overflow: 'hidden',
-                                    textOverflow: 'ellipsis',
-                                    whiteSpace: 'nowrap'
+                                
+                                {/* Machine Type */}
+                                <Box sx={{ 
+                                    p: 1.5, 
+                                    borderRadius: 2, 
+                                    backgroundColor: `${theme.palette.primary.main}08`,
+                                    border: `1px solid ${theme.palette.primary.main}20`,
                                 }}>
-                                    {machine.type}
-                                </Typography>
+                                    <Box sx={{ 
+                                        display: 'flex', 
+                                        alignItems: 'center', 
+                                        gap: 1, 
+                                        mb: 0.5,
+                                    }}>
+                                        <SettingsIcon sx={{ fontSize: 16, color: 'primary.main' }} />
+                                        <Typography variant="caption" sx={{ 
+                                            color: 'primary.main', 
+                                            fontSize: '0.75rem',
+                                            fontWeight: 600 
+                                        }}>
+                                            Loại máy
+                                        </Typography>
+                                        
+                                    </Box>
+                                    <Typography variant="body2" sx={{ 
+                                        fontWeight: 700, 
+                                        color: 'primary.main', 
+                                        fontSize: '0.9rem',
+                                        overflow: 'hidden',
+                                        textOverflow: 'ellipsis',
+                                        whiteSpace: 'nowrap'
+                                    }}>
+                                        {machine.type}
+                                    </Typography>
+                                </Box>
                             </Box>
                         </Box>
-                    </Box>
 
                     {/* MACHINE OWNER SECTION */}
-                    <Box sx={{ 
+                    {/* <Box sx={{ 
                         mb: 1.5, 
                         p: 1.5,
                         background: `linear-gradient(135deg, ${theme.palette.success.main}08, ${theme.palette.success.main}04)`,
@@ -408,9 +408,9 @@ const MachineStatusCard = ({ machine, user, onClick, onDelete }) => {
                                         Chủ sở hữu máy
                                     </Typography>
                                 </Box>
-                                
+                                 */}
                                 {/* Owner UserID */}
-                                <Typography
+                                {/* <Typography
                                     variant="body2"
                                     sx={{
                                         fontFamily: 'monospace',
@@ -424,7 +424,7 @@ const MachineStatusCard = ({ machine, user, onClick, onDelete }) => {
                                 </Typography>
                             </Box>
                         </Box>
-                    </Box>
+                    </Box> */}
 
                     {/* ENHANCED CONNECTION STATUS */}
                     <Box sx={{ 

@@ -10,13 +10,13 @@ const MachineBasicInfo = ({ machine }) => {
                 </Typography>
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                     <Typography>
-                        <strong>Loại máy:</strong> {machine.type}
+                        <strong>Loại máy:</strong> {machine?.type || 'N/A'}
                     </Typography>
                     <Typography>
-                        <strong>Chủ sở hữu:</strong> {machine.userId}
+                        <strong>Chủ sở hữu:</strong> {machine?.userId || 'N/A'}
                     </Typography>
                     <Typography>
-                        <strong>ID:</strong> {machine.machineId}
+                        <strong>ID:</strong> {machine?.machineId || 'N/A'}
                     </Typography>
                 </Box>
             </CardContent>
