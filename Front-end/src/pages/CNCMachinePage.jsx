@@ -5,7 +5,6 @@ import { ArrowBack } from '@mui/icons-material';
 import { useMachine } from '../hooks/useMachine';
 import { useMachineSocketEvents } from '../hooks/useSocketEvents';
 import MachineHeader from '../components/machine/MachineHeader';
-import MachineBasicInfo from '../components/machine/MachineBasicInfo';
 import CNCMachinePanel from '../components/cncMachine/CNCMachinePanel';
 import CNCMachineDataDisplay from '../components/cncMachine/CNCMachineDataDisplay';
 
@@ -80,7 +79,6 @@ const CNCMachinePage = ({ user }) => {
             <Grid container spacing={3}>
                 {/* Left Column - Thông tin máy và thống kê */}
                 <Grid size={{ xs: 3.8, md: 3.64 }}>
-                     <MachineBasicInfo machine={machine} />
                     <CNCMachinePanel
                         machine={machine}
                         machineRealtime={machineRealtime}

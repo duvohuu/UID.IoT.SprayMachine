@@ -4,10 +4,10 @@ import cron from 'node-cron';
 import { getIO } from '../config/socket.js';
 
 const WORK_HOURS_PER_DAY = 12; 
-const WORK_START_HOUR = 18;    
+const WORK_START_HOUR = 0;    
 const WORK_START_MINUTE = 0;   
-const WORK_END_HOUR = 22;     
-const WORK_END_MINUTE = 4;     
+const WORK_END_HOUR = 18;     
+const WORK_END_MINUTE = 0;     
 /**
  * Lấy date string theo timezone Việt Nam (UTC+7)
  */
@@ -237,44 +237,6 @@ export const processMQTTUpdate = async (machineId, mqttData) => {
         console.error(`[Service] Error processing MQTT for ${machineId}:`, error);
         throw error;
     }
-};
-
-/**
- * Lấy active time thực tế (bao gồm đợt chạy hiện tại)
- */
-export const getCurrentActiveTime = (data) => {
-    let activeTime = data.activeTime;
-    
-    // Chỉ tính thời gian hiện tại nếu TRONG CA và đang chạy
-    if (data.lastStatus === 1 && isWithinWorkShift()) {
-        const now = new Date();
-        const currentRunTimeMs = now - new Date(data.lastStatusChangeTime);
-        const currentRunTimeHours = currentRunTimeMs / (1000 * 60 * 60);
-        
-        activeTime += currentRunTimeHours;
-        activeTime = Math.min(activeTime, WORK_HOURS_PER_DAY);
-    }
-    
-    return activeTime;
-};
-
-/**
- * Lấy stop time thực tế (bao gồm đợt dừng hiện tại)
- */
-export const getCurrentStopTime = (data) => {
-    let stopTime = data.stopTime;
-    
-    // Chỉ tính thời gian hiện tại nếu TRONG CA và đang dừng
-    if (data.lastStatus !== 1 && isWithinWorkShift()) {
-        const now = new Date();
-        const currentStopTimeMs = now - new Date(data.lastStatusChangeTime);
-        const currentStopTimeHours = currentStopTimeMs / (1000 * 60 * 60);
-        
-        stopTime += currentStopTimeHours;
-        stopTime = Math.min(stopTime, WORK_HOURS_PER_DAY);
-    }
-    
-    return stopTime;
 };
 
 /**

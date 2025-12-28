@@ -14,7 +14,6 @@ import { useMachine } from '../hooks/useMachine';
 import { useSprayRealtime } from '../hooks/useSprayRealtime';
 import { useMachineSocketEvents } from '../hooks/useSocketEvents';
 import MachineHeader from '../components/machine/MachineHeader';
-import MachineBasicInfo from '../components/machine/MachineBasicInfo';
 import SprayMachinePanel from '../components/sprayMachine/SprayMachinePanel';
 import SprayMachineDataDisplay from '../components/sprayMachine/SprayMachineDataDisplay';
 
@@ -38,7 +37,7 @@ const SprayMachinePage = () => {
         machine,
         loading: machineLoading,
         error: machineError
-    } = useMachine(machineId, 'machineId');
+    } = useMachine(machineId);
 
     // ==================== FETCH SPRAY DATA ====================
     const {
@@ -209,18 +208,12 @@ const SprayMachinePage = () => {
                 {/* Left Column - Machine Info & Panel */}
                 <Grid item xs={12} md={4}>
                     {/* Basic Info */}
-                    <Box sx={{ mb: 2 }}>
-                        <MachineBasicInfo machine={machine} />
-                    </Box>
+    
 
                     {/* Spray Machine Panel */}
                     <SprayMachinePanel
-                        machine={machine}
-                        realtimeData={realtimeData}
+                        machine={machineRealtime || machine}
                         isConnected={isConnected}
-                        loading={sprayLoading}
-                        error={sprayError}
-                        onRefresh={refreshAllData}
                     />
                 </Grid>
 
@@ -265,13 +258,6 @@ const SprayMachinePage = () => {
                     disabled={sprayLoading}
                 >
                     Làm mới lịch sử
-                </Button>
-                <Button 
-                    variant="outlined" 
-                    onClick={() => navigate('/status')}
-                    startIcon={<ArrowBack />}
-                >
-                    Quay lại
                 </Button>
             </Box>
         </Container>

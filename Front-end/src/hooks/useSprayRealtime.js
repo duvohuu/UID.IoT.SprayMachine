@@ -1,353 +1,209 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { 
     getSprayRealtimeData, 
     getSprayDailyData, 
+    getSprayStatistics, 
     getSpray30DaysHistory,
-    getSprayStatistics,
-    getSprayPieChartData
+    getSprayPieChartData 
 } from '../api/sprayMachineAPI';
 
-/**
- * ========================================
- * CUSTOM HOOK: useSprayRealtime
- * ========================================
- * Hook quản lý dữ liệu realtime và historical của Spray Machine
- * 
- * @param {string} machineId - ID của máy Spray
- * @returns {Object} State và functions để quản lý dữ liệu Spray
- */
 export const useSprayRealtime = (machineId) => {
-    // ==================== STATE ====================
     const [realtimeData, setRealtimeData] = useState(null);
     const [dailyData, setDailyData] = useState(null);
-    const [historyData, setHistoryData] = useState([]);
     const [statistics, setStatistics] = useState(null);
     const [pieChartData, setPieChartData] = useState(null);
-    
+    const [historyData, setHistoryData] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [isRefreshing, setIsRefreshing] = useState(false);
-    
-    // Refs for cleanup
-    const realtimeIntervalRef = useRef(null);
-    const dailyIntervalRef = useRef(null);
-    const isMountedRef = useRef(true);
+    const [isConnected, setIsConnected] = useState(false);
 
-    // ==================== FETCH FUNCTIONS ====================
-    
-    /**
-     * Fetch dữ liệu realtime (được gọi mỗi 5s)
-     */
+    // ==================== FETCH REALTIME DATA ====================
     const fetchRealtimeData = useCallback(async () => {
-        if (!machineId || !isMountedRef.current) return;
-
+        if (!machineId) return;
+        
         try {
             const result = await getSprayRealtimeData(machineId);
             
-            if (result.success && isMountedRef.current) {
+            if (result.success && result.data) {
+                console.log('✅ [useSprayRealtime] Realtime data:', result.data);
                 setRealtimeData(result.data);
+                setIsConnected(result.data.isConnected || false);
                 setError(null);
-                
-                console.log('✅ [Spray Realtime] Updated:', {
-                    machineId,
-                    status: result.data.sprayStatus,
-                    pressure: result.data.pressure,
-                    timestamp: new Date().toLocaleTimeString()
-                });
-            } else if (!result.success && isMountedRef.current) {
+            } else {
+                console.error('❌ [useSprayRealtime] Realtime failed:', result.message);
                 setError(result.message);
-                console.error('❌ [Spray Realtime] Error:', result.message);
             }
         } catch (err) {
-            if (isMountedRef.current) {
-                setError('Lỗi khi lấy dữ liệu realtime');
-                console.error('❌ [Spray Realtime] Exception:', err);
-            }
+            console.error('❌ [useSprayRealtime] Realtime error:', err);
+            setError(err.message || 'Lỗi tải dữ liệu realtime');
+            setIsConnected(false);
         }
     }, [machineId]);
 
-    /**
-     * Fetch dữ liệu hôm nay (được gọi mỗi 30s)
-     */
+    // ==================== FETCH DAILY DATA ====================
     const fetchDailyData = useCallback(async () => {
-        if (!machineId || !isMountedRef.current) return;
-
+        if (!machineId) return;
+        
         try {
             const result = await getSprayDailyData(machineId);
             
-            if (result.success && isMountedRef.current) {
+            if (result.success && result.data) {
+                console.log('✅ [useSprayRealtime] Daily data:', result.data);
                 setDailyData(result.data);
-                
-                console.log('✅ [Spray Daily] Updated:', {
-                    machineId,
-                    operatingTime: result.data.operatingTime,
-                    productCount: result.data.productCount,
-                    date: result.data.date
-                });
+                setError(null);
+            } else {
+                console.error('❌ [useSprayRealtime] Daily failed:', result.message);
+                setError(result.message);
             }
         } catch (err) {
-            console.error('❌ [Spray Daily] Exception:', err);
+            console.error('❌ [useSprayRealtime] Daily error:', err);
+            setError(err.message || 'Lỗi tải dữ liệu hôm nay');
         }
     }, [machineId]);
 
-    /**
-     * Fetch dữ liệu 30 ngày
-     */
-    const fetchHistoryData = useCallback(async () => {
-        if (!machineId || !isMountedRef.current) return;
-
-        try {
-            const result = await getSpray30DaysHistory(machineId, { limit: 30 });
-            
-            if (result.success && isMountedRef.current) {
-                setHistoryData(result.data);
-                
-                console.log('✅ [Spray History] Loaded:', {
-                    machineId,
-                    dataPoints: result.data.length,
-                    dateRange: result.data.length > 0 ? {
-                        from: result.data[result.data.length - 1]?.date,
-                        to: result.data[0]?.date
-                    } : null
-                });
-            }
-        } catch (err) {
-            console.error('❌ [Spray History] Exception:', err);
-        }
-    }, [machineId]);
-
-    /**
-     * Fetch thống kê tổng hợp
-     */
-    const fetchStatistics = useCallback(async () => {
-        if (!machineId || !isMountedRef.current) return;
-
-        try {
-            const result = await getSprayStatistics(machineId);
-            
-            if (result.success && isMountedRef.current) {
-                setStatistics(result.data);
-                
-                console.log('✅ [Spray Statistics] Loaded:', {
-                    machineId,
-                    totalOperatingTime: result.data.totalOperatingTime,
-                    averageEfficiency: result.data.averageEfficiency
-                });
-            }
-        } catch (err) {
-            console.error('❌ [Spray Statistics] Exception:', err);
-        }
-    }, [machineId]);
-
-    /**
-     * Fetch dữ liệu biểu đồ tròn
-     */
+    // ==================== FETCH PIE CHART DATA ====================
     const fetchPieChartData = useCallback(async () => {
-        if (!machineId || !isMountedRef.current) return;
-
+        if (!machineId) return;
+        
         try {
             const result = await getSprayPieChartData(machineId);
             
-            if (result.success && isMountedRef.current) {
+            if (result.success && result.data) {
+                console.log('✅ [useSprayRealtime] Pie chart data:', result.data);
                 setPieChartData(result.data);
-                
-                console.log('✅ [Spray Pie Chart] Loaded:', {
-                    machineId,
-                    operatingTime: result.data.operatingTime,
-                    pausedTime: result.data.pausedTime,
-                    idleTime: result.data.idleTime
-                });
+                setError(null);
+            } else {
+                console.error('❌ [useSprayRealtime] Pie chart failed:', result.message);
+                setError(result.message);
             }
         } catch (err) {
-            console.error('❌ [Spray Pie Chart] Exception:', err);
+            console.error('❌ [useSprayRealtime] Pie chart error:', err);
+            setError(err.message || 'Lỗi tải biểu đồ tròn');
         }
     }, [machineId]);
 
-    // ==================== INITIAL FETCH ====================
-    
-    /**
-     * Load tất cả dữ liệu lần đầu
-     */
-    const loadAllData = useCallback(async () => {
-        if (!machineId) {
-            setLoading(false);
-            return;
+    // ==================== FETCH STATISTICS ====================
+    const fetchStatistics = useCallback(async () => {
+        if (!machineId) return;
+        
+        try {
+            const result = await getSprayStatistics(machineId);
+            
+            if (result.success && result.data) {
+                console.log('✅ [useSprayRealtime] Statistics:', result.data);
+                setStatistics(result.data);
+                setError(null);
+            } else {
+                console.error('❌ [useSprayRealtime] Statistics failed:', result.message);
+                setError(result.message);
+            }
+        } catch (err) {
+            console.error('❌ [useSprayRealtime] Statistics error:', err);
+            setError(err.message || 'Lỗi tải thống kê');
         }
+    }, [machineId]);
 
-        console.log('🔄 [Spray] Loading all data for:', machineId);
+    // ==================== FETCH HISTORY DATA ====================
+    const fetchHistoryData = useCallback(async () => {
+        if (!machineId) return;
+        
+        try {
+            const result = await getSpray30DaysHistory(machineId);
+            
+            if (result.success && result.data) {
+                console.log('✅ [useSprayRealtime] History data:', result.data);
+                setHistoryData(result.data);
+                setError(null);
+            } else {
+                console.error('❌ [useSprayRealtime] History failed:', result.message);
+                setError(result.message);
+            }
+        } catch (err) {
+            console.error('❌ [useSprayRealtime] History error:', err);
+            setError(err.message || 'Lỗi tải lịch sử');
+        }
+    }, [machineId]);
+
+    // ==================== FETCH ALL DATA ====================
+    const fetchAllData = useCallback(async () => {
         setLoading(true);
         setError(null);
-
+        
         try {
-            // Fetch tất cả dữ liệu song song
+            console.log(`🔄 [useSprayRealtime] Fetching all data for: ${machineId}`);
+            
             await Promise.all([
                 fetchRealtimeData(),
                 fetchDailyData(),
-                fetchHistoryData(),
+                fetchPieChartData(),
                 fetchStatistics(),
-                fetchPieChartData()
+                fetchHistoryData()
             ]);
+            
+            console.log('✅ [useSprayRealtime] All data loaded successfully');
         } catch (err) {
-            console.error('❌ [Spray] Error loading data:', err);
-            if (isMountedRef.current) {
-                setError('Lỗi khi tải dữ liệu Spray Machine');
-            }
+            console.error('❌ [useSprayRealtime] Error fetching all data:', err);
+            setError(err.message || 'Lỗi tải dữ liệu');
         } finally {
-            if (isMountedRef.current) {
-                setLoading(false);
-            }
+            setLoading(false);
         }
-    }, [machineId, fetchRealtimeData, fetchDailyData, fetchHistoryData, fetchStatistics, fetchPieChartData]);
+    }, [machineId, fetchRealtimeData, fetchDailyData, fetchPieChartData, fetchStatistics, fetchHistoryData]);
 
-    // ==================== REFRESH FUNCTION ====================
-    
-    /**
-     * Làm mới tất cả dữ liệu (manual refresh)
-     */
-    const refreshAllData = useCallback(async () => {
-        if (isRefreshing) return;
-        
-        console.log('🔄 [Spray] Manual refresh triggered');
-        setIsRefreshing(true);
+    // ==================== REFRESH FUNCTIONS ====================
+    const refreshAllData = useCallback(() => {
+        console.log('🔄 [useSprayRealtime] Manual refresh all data');
+        fetchAllData();
+    }, [fetchAllData]);
 
-        try {
-            await Promise.all([
-                fetchRealtimeData(),
-                fetchDailyData(),
-                fetchPieChartData()
-            ]);
-        } catch (err) {
-            console.error('❌ [Spray] Refresh error:', err);
-        } finally {
-            setIsRefreshing(false);
-        }
-    }, [isRefreshing, fetchRealtimeData, fetchDailyData, fetchPieChartData]);
+    const refreshHistoricalData = useCallback(() => {
+        console.log('🔄 [useSprayRealtime] Manual refresh historical data');
+        fetchStatistics();
+        fetchHistoryData();
+    }, [fetchStatistics, fetchHistoryData]);
 
-    /**
-     * Làm mới chỉ dữ liệu historical (ít thay đổi)
-     */
-    const refreshHistoricalData = useCallback(async () => {
-        console.log('🔄 [Spray] Refreshing historical data');
-        
-        try {
-            await Promise.all([
-                fetchHistoryData(),
-                fetchStatistics()
-            ]);
-        } catch (err) {
-            console.error('❌ [Spray] Historical refresh error:', err);
-        }
-    }, [fetchHistoryData, fetchStatistics]);
-
-    // ==================== EFFECTS ====================
-    
-    /**
-     * Initial load khi component mount hoặc machineId thay đổi
-     */
+    // ==================== INITIAL LOAD ====================
     useEffect(() => {
-        isMountedRef.current = true;
-        loadAllData();
+        if (machineId) {
+            console.log(`🚀 [useSprayRealtime] Initial load for: ${machineId}`);
+            fetchAllData();
+        } else {
+            console.warn('⚠️ [useSprayRealtime] No machineId provided');
+            setError('Machine ID không hợp lệ');
+            setLoading(false);
+        }
+    }, [machineId, fetchAllData]);
 
-        return () => {
-            isMountedRef.current = false;
-        };
-    }, [loadAllData]);
-
-    /**
-     * Auto-refresh realtime data mỗi 5 giây
-     */
+    // ==================== AUTO REFRESH REALTIME ====================
     useEffect(() => {
         if (!machineId) return;
 
-        console.log('⏰ [Spray] Starting realtime auto-refresh (5s interval)');
-        
-        realtimeIntervalRef.current = setInterval(() => {
-            if (isMountedRef.current) {
-                fetchRealtimeData();
-            }
+        console.log('⏰ [useSprayRealtime] Setting up auto-refresh (5s interval)');
+        const interval = setInterval(() => {
+            fetchRealtimeData();
+            fetchDailyData();
+            fetchPieChartData();
         }, 5000);
 
         return () => {
-            if (realtimeIntervalRef.current) {
-                clearInterval(realtimeIntervalRef.current);
-                console.log('🛑 [Spray] Stopped realtime auto-refresh');
-            }
+            console.log('🛑 [useSprayRealtime] Cleaning up auto-refresh');
+            clearInterval(interval);
         };
-    }, [machineId, fetchRealtimeData]);
+    }, [machineId, fetchRealtimeData, fetchDailyData, fetchPieChartData]);
 
-    /**
-     * Auto-refresh daily data và pie chart mỗi 30 giây
-     */
-    useEffect(() => {
-        if (!machineId) return;
+    // ==================== CALCULATE TODAY EFFICIENCY ====================
+    const todayEfficiency = dailyData ? dailyData.efficiency || 0 : 0;
 
-        console.log('⏰ [Spray] Starting daily data auto-refresh (30s interval)');
-        
-        dailyIntervalRef.current = setInterval(() => {
-            if (isMountedRef.current) {
-                fetchDailyData();
-                fetchPieChartData();
-            }
-        }, 30000);
-
-        return () => {
-            if (dailyIntervalRef.current) {
-                clearInterval(dailyIntervalRef.current);
-                console.log('🛑 [Spray] Stopped daily data auto-refresh');
-            }
-        };
-    }, [machineId, fetchDailyData, fetchPieChartData]);
-
-    // ==================== COMPUTED VALUES ====================
-    
-    /**
-     * Check xem có dữ liệu hay không
-     */
-    const hasData = realtimeData !== null || dailyData !== null;
-
-    /**
-     * Get trạng thái kết nối hiện tại
-     */
-    const isConnected = realtimeData?.isConnected ?? false;
-
-    /**
-     * Get trạng thái phun hiện tại
-     */
-    const currentSprayStatus = realtimeData?.sprayStatus ?? 0;
-
-    /**
-     * Tính % hiệu suất hôm nay
-     */
-    const todayEfficiency = dailyData ? 
-        ((dailyData.operatingTime / 12) * 100).toFixed(1) : 0;
-
-    // ==================== RETURN ====================
-    
     return {
-        // Data
         realtimeData,
         dailyData,
-        historyData,
         statistics,
         pieChartData,
-        
-        // States
+        historyData,
         loading,
         error,
-        isRefreshing,
-        
-        // Computed
-        hasData,
         isConnected,
-        currentSprayStatus,
         todayEfficiency,
-        
-        // Functions
         refreshAllData,
-        refreshHistoricalData,
-        fetchRealtimeData,
-        fetchDailyData,
+        refreshHistoricalData
     };
 };
-
-export default useSprayRealtime;

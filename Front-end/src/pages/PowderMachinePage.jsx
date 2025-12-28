@@ -8,7 +8,6 @@ import { useWorkShifts } from '../hooks/useWorkShifts';
 import { useCSVExport } from '../hooks/useCSVExport';
 import { useMachineSocketEvents } from '../hooks/useSocketEvents';
 import MachineHeader from '../components/machine/MachineHeader';
-import MachineBasicInfo from '../components/machine/MachineBasicInfo';
 import PowderMachineDataDisplay from '../components/powderMachine/PowderMachineDataDisplay';
 import PowderMachinePanel from '../components/powderMachine/PowderMachinePanel';
 
@@ -139,7 +138,6 @@ const PowderMachinePage = ({ user }) => {
             <Grid container spacing={3}>
                 {/* Left Column */}
                 <Grid size={{ xs: 3.8, md: 3.64 }}>
-                    <MachineBasicInfo machine={machine} />
                     <PowderMachinePanel
                         machine={machine}
                         workShifts={workShifts}

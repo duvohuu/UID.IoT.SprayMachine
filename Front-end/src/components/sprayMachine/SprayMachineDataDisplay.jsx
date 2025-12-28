@@ -1,187 +1,197 @@
 import React from 'react';
-import { Card, CardContent, Typography, Box, Grid, Alert, CircularProgress } from '@mui/material';
+import { 
+    Card, 
+    CardContent, 
+    Typography, 
+    Box, 
+    Grid, 
+    CircularProgress, 
+    Alert 
+} from '@mui/material';
 import { Pie } from 'react-chartjs-2';
-import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
-import {
-    DAILY_DATA_CONFIG,
-    STATISTICS_CONFIG,
-    formatValue,
-    getPieChartData,
-    pieChartOptions
-} from '../../config/sprayMachineConfig';
+import { 
+    Chart as ChartJS, 
+    ArcElement, 
+    Tooltip, 
+    Legend 
+} from 'chart.js';
+import { dailyStats, monthlyStats } from '../../config/sprayMachineConfig';
 
 ChartJS.register(ArcElement, Tooltip, Legend);
 
 const SprayMachineDataDisplay = ({ dailyData, statistics, loading, error }) => {
 
+    // ==================== STAT CARD COMPONENT ====================
     const StatCard = ({ config, value }) => {
-        const Icon = config.icon;
+        const displayValue = value !== null && value !== undefined 
+            ? (typeof value === 'number' ? value.toFixed(config.decimals || 0) : value)
+            : 'N/A';
+
         return (
-            <Box sx={{ 
-                p: 2.5, 
-                borderRadius: 2, 
-                border: '2px solid',
-                borderColor: config.color,
-                bgcolor: 'background.paper',
-                height: '100%',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 1
-            }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                    <Icon sx={{ fontSize: 24, color: config.color }} />
-                    <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600 }}>
-                        {config.title}
+            <Card sx={{ height: '100%' }}>
+                <CardContent>
+                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                        <Box sx={{ 
+                            fontSize: '2rem', 
+                            mr: 1,
+                            color: config.color 
+                        }}>
+                            {config.icon}
+                        </Box>
+                        <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+                            {config.label}
+                        </Typography>
+                    </Box>
+                    <Typography 
+                        variant="h4" 
+                        sx={{ 
+                            fontWeight: 'bold',
+                            color: config.color,
+                            mb: 1
+                        }}
+                    >
+                        {displayValue} {config.unit}
                     </Typography>
-                </Box>
-                <Typography variant="h5" sx={{ fontWeight: 'bold', color: config.color }}>
-                    {formatValue(value, config.unit)}
-                </Typography>
-                <Typography variant="caption" color="text.secondary" sx={{ fontSize: 10 }}>
-                    {config.description}
-                </Typography>
-            </Box>
+                    <Typography variant="caption" color="text.secondary">
+                        {config.description}
+                    </Typography>
+                </CardContent>
+            </Card>
         );
     };
 
+    // ==================== LOADING STATE ====================
     if (loading) {
         return (
-            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 400 }}>
-                <CircularProgress />
+            <Box sx={{ 
+                display: 'flex', 
+                justifyContent: 'center', 
+                alignItems: 'center', 
+                height: 400,
+                flexDirection: 'column',
+                gap: 2
+            }}>
+                <CircularProgress size={60} />
+                <Typography variant="h6" color="text.secondary">
+                    Đang tải dữ liệu...
+                </Typography>
             </Box>
         );
     }
 
+    // ==================== ERROR STATE ====================
     if (error) {
-        return <Alert severity="error">{error}</Alert>;
+        return (
+            <Alert severity="error" sx={{ mb: 3 }}>
+                <Typography variant="body1" sx={{ fontWeight: 600, mb: 1 }}>
+                    ❌ Lỗi tải dữ liệu
+                </Typography>
+                <Typography variant="body2">
+                    {error}
+                </Typography>
+            </Alert>
+        );
     }
 
+    // ==================== NO DATA STATE ====================
+    if (!dailyData || !statistics) {
+        return (
+            <Alert severity="warning" sx={{ mb: 3 }}>
+                <Typography variant="body1">
+                    ⚠️ Chưa có dữ liệu
+                </Typography>
+            </Alert>
+        );
+    }
+
+    // ==================== PIE CHART DATA ====================
+    const pieData = {
+        labels: ['Thời gian chạy', 'Thời gian dừng'],
+        datasets: [{
+            data: [
+                dailyData.operatingTime || 0,
+                dailyData.pausedTime || 0
+            ],
+            backgroundColor: ['#4caf50', '#f44336'],
+            borderWidth: 2,
+            borderColor: '#fff'
+        }]
+    };
+
+    const pieOptions = {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                position: 'bottom',
+                labels: {
+                    font: { size: 14 },
+                    padding: 15
+                }
+            },
+            tooltip: {
+                callbacks: {
+                    label: (context) => {
+                        const label = context.label || '';
+                        const value = context.parsed || 0;
+                        const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                        const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+                        return `${label}: ${value.toFixed(2)}h (${percentage}%)`;
+                    }
+                }
+            }
+        }
+    };
+
     return (
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-            
-            <Card>
+        <Box>
+            {/* ==================== BIỂU ĐỒ TRÒN ==================== */}
+            <Card sx={{ mb: 3 }}>
                 <CardContent>
-                    <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 2 }}>
-                        📊 Phân bổ thời gian hôm nay
+                    <Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold', mb: 3 }}>
+                        📊 Thời gian hoạt động hôm nay (6h-18h)
                     </Typography>
-
-                    {dailyData?.operatingTime !== undefined && dailyData?.pausedTime !== undefined ? (
-                        <Box>
-                            <Box sx={{ height: 300, mb: 3 }}>
-                                <Pie 
-                                    data={getPieChartData(dailyData.operatingTime, dailyData.pausedTime)} 
-                                    options={pieChartOptions} 
-                                />
-                            </Box>
-
-                            <Grid container spacing={2}>
-                                <Grid item xs={6}>
-                                    <Box sx={{ 
-                                        p: 2, 
-                                        borderRadius: 2, 
-                                        bgcolor: '#4caf50',
-                                        color: 'white',
-                                        textAlign: 'center'
-                                    }}>
-                                        <Typography variant="caption" sx={{ opacity: 0.9 }}>
-                                            Thời gian chạy
-                                        </Typography>
-                                        <Typography variant="h5" sx={{ fontWeight: 'bold', mt: 0.5 }}>
-                                            {formatValue(dailyData.operatingTime, 'giờ')}
-                                        </Typography>
-                                        <Typography variant="caption" sx={{ fontSize: 11 }}>
-                                            {((dailyData.operatingTime / 12) * 100).toFixed(1)}% ca
-                                        </Typography>
-                                    </Box>
-                                </Grid>
-
-                                <Grid item xs={6}>
-                                    <Box sx={{ 
-                                        p: 2, 
-                                        borderRadius: 2, 
-                                        bgcolor: '#ff9800',
-                                        color: 'white',
-                                        textAlign: 'center'
-                                    }}>
-                                        <Typography variant="caption" sx={{ opacity: 0.9 }}>
-                                            Thời gian dừng
-                                        </Typography>
-                                        <Typography variant="h5" sx={{ fontWeight: 'bold', mt: 0.5 }}>
-                                            {formatValue(dailyData.pausedTime, 'giờ')}
-                                        </Typography>
-                                        <Typography variant="caption" sx={{ fontSize: 11 }}>
-                                            {((dailyData.pausedTime / 12) * 100).toFixed(1)}% ca
-                                        </Typography>
-                                    </Box>
-                                </Grid>
-                            </Grid>
-                        </Box>
-                    ) : (
-                        <Alert severity="info">Chưa có dữ liệu thời gian hôm nay</Alert>
-                    )}
-                </CardContent>
-            </Card>
-
-            <Card>
-                <CardContent>
-                    <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 2 }}>
-                        📈 Năng suất hôm nay
-                    </Typography>
-
-                    {dailyData ? (
-                        <Grid container spacing={2}>
-                            <Grid item xs={12} sm={6} md={4}>
-                                <StatCard 
-                                    config={DAILY_DATA_CONFIG.avgCurrent}
-                                    value={dailyData.avgCurrent || dailyData.current}
-                                />
-                            </Grid>
-                        </Grid>
-                    ) : (
-                        <Alert severity="info">Chưa có dữ liệu năng suất hôm nay</Alert>
-                    )}
-
-                    <Alert severity="info" sx={{ mt: 2 }}>
-                        <Typography variant="caption">
-                            💡 Dữ liệu tự động reset mỗi ngày lúc 6h sáng. Ca làm việc: 6h-18h (12 giờ).
+                    <Box sx={{ height: 300, position: 'relative' }}>
+                        <Pie data={pieData} options={pieOptions} />
+                    </Box>
+                    <Box sx={{ mt: 2, p: 2, bgcolor: 'background.default', borderRadius: 1 }}>
+                        <Typography variant="body2" color="text.secondary" align="center">
+                            💡 Hiệu suất: <strong>{dailyData.efficiency || 0}%</strong> 
+                            {' '}({dailyData.operatingTime || 0}h / 12h)
                         </Typography>
-                    </Alert>
+                    </Box>
                 </CardContent>
             </Card>
 
-            <Card>
-                <CardContent>
-                    <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 2 }}>
-                        📅 Thống kê 30 ngày gần nhất
-                    </Typography>
+            {/* ==================== THỐNG KÊ HÔM NAY ==================== */}
+            <Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold', mb: 2 }}>
+                📅 Thống kê hôm nay
+            </Typography>
+            <Grid container spacing={2} sx={{ mb: 3 }}>
+                {dailyStats.map((stat) => (
+                    <Grid item xs={12} sm={6} md={3} key={stat.key}>
+                        <StatCard 
+                            config={stat} 
+                            value={dailyData[stat.key]} 
+                        />
+                    </Grid>
+                ))}
+            </Grid>
 
-                    {statistics ? (
-                        <Grid container spacing={2}>
-                            <Grid item xs={12} sm={6} md={3}>
-                                <StatCard 
-                                    config={STATISTICS_CONFIG.totalOperatingTime}
-                                    value={statistics.totalOperatingTime}
-                                />
-                            </Grid>
-                            <Grid item xs={12} sm={6} md={3}>
-                                <StatCard 
-                                    config={STATISTICS_CONFIG.totalEnergyConsumed}
-                                    value={statistics.totalEnergyConsumed}
-                                />
-                            </Grid>
-                            <Grid item xs={12} sm={6} md={3}>
-                                <StatCard 
-                                    config={STATISTICS_CONFIG.averageOperatingPercentage}
-                                    value={statistics.averageOperatingPercentage}
-                                />
-                            </Grid>
-                        </Grid>
-                    ) : (
-                        <Alert severity="info">Chưa có dữ liệu thống kê 30 ngày</Alert>
-                    )}
-                </CardContent>
-            </Card>
-
+            {/* ==================== THỐNG KÊ 30 NGÀY ==================== */}
+            <Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold', mb: 2 }}>
+                📈 Thống kê 30 ngày gần nhất
+            </Typography>
+            <Grid container spacing={2}>
+                {monthlyStats.map((stat) => (
+                    <Grid item xs={12} sm={6} md={4} key={stat.key}>
+                        <StatCard 
+                            config={stat} 
+                            value={statistics[stat.key]} 
+                        />
+                    </Grid>
+                ))}
+            </Grid>
         </Box>
     );
 };

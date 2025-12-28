@@ -1,71 +1,70 @@
 import { Server } from 'socket.io';
-import dotenv from 'dotenv';
 
-dotenv.config();
+let io = null;
 
-let io;
-
+/**
+ * Initialize Socket.IO server
+ */
 export const initializeSocket = (server) => {
+    // Parse CORS origins from .env
     const corsOrigins = process.env.CORS_ORIGINS 
         ? process.env.CORS_ORIGINS.split(',').map(origin => origin.trim())
         : ['http://localhost:5173'];
 
-    console.log('🔌 Socket.IO CORS Origins:', corsOrigins);
-
     io = new Server(server, {
         cors: {
-            origin: corsOrigins,  
+            origin: corsOrigins,
             methods: ['GET', 'POST'],
             credentials: true
         },
-        pingTimeout: 60000,
-        pingInterval: 25000,
-        transports: ['websocket', 'polling']
+        pingTimeout: 60000,      // ← Tăng timeout
+        pingInterval: 25000,     // ← Heartbeat interval
+        transports: ['websocket', 'polling']  // ← Support cả 2
     });
 
     io.on('connection', (socket) => {
-        console.log('✅ Socket.IO: Client connected -', socket.id);
-
-        socket.on('join-machine', (machineId) => {
-            socket.join(`machine-${machineId}`);
-            console.log(`📡 Socket ${socket.id} joined machine-${machineId}`);
-        });
-
-        socket.on('leave-machine', (machineId) => {
-            socket.leave(`machine-${machineId}`);
-            console.log(`📤 Socket ${socket.id} left machine-${machineId}`);
-        });
-
+        console.log(`✅ Socket.IO: Client connected - ${socket.id}`);
+        
+        // Handle disconnect with better logging
         socket.on('disconnect', (reason) => {
-            console.log('❌ Socket.IO: Client disconnected -', socket.id, 'Reason:', reason);
+            if (reason === 'transport close') {
+                console.log(`🔌 Socket.IO: Client disconnected normally - ${socket.id}`);
+            } else if (reason === 'ping timeout') {
+                console.log(`⏱️ Socket.IO: Client ping timeout - ${socket.id}`);
+            } else if (reason === 'client namespace disconnect') {
+                console.log(`👋 Socket.IO: Client manually disconnected - ${socket.id}`);
+            } else {
+                console.log(`❌ Socket.IO: Client disconnected - ${socket.id} Reason: ${reason}`);
+            }
         });
 
+        // Handle errors
         socket.on('error', (error) => {
-            console.error('🔥 Socket.IO error:', error);
+            console.error(`❌ Socket.IO Error - ${socket.id}:`, error);
+        });
+
+        // Handle machine subscription
+        socket.on('subscribe', (machineId) => {
+            socket.join(`machine:${machineId}`);
+            console.log(`📡 Client ${socket.id} subscribed to machine:${machineId}`);
+        });
+
+        socket.on('unsubscribe', (machineId) => {
+            socket.leave(`machine:${machineId}`);
+            console.log(`📡 Client ${socket.id} unsubscribed from machine:${machineId}`);
         });
     });
 
-    console.log('🔌 Socket.IO server initialized');
+    console.log('✅ Socket.IO initialized');
     return io;
 };
 
+/**
+ * Get Socket.IO instance
+ */
 export const getIO = () => {
     if (!io) {
-        throw new Error('Socket.IO not initialized!');
+        throw new Error('Socket.IO not initialized');
     }
     return io;
 };
-
-export const emitToMachine = (machineId, event, data) => {
-    if (io) {
-        io.to(`machine-${machineId}`).emit(event, data);
-    }
-};
-
-export const emitToAll = (event, data) => {
-    if (io) {
-        io.emit(event, data);
-    }
-};
-
-export default { initializeSocket, getIO, emitToMachine, emitToAll };

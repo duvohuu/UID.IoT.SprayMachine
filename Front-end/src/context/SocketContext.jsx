@@ -1,12 +1,12 @@
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import io from 'socket.io-client';
+import React, { createContext, useContext, useEffect, useState } from 'react';
+import { io } from 'socket.io-client';
 
-const SocketContext = createContext();
+const SocketContext = createContext(null);
 
 export const useSocket = () => {
     const context = useContext(SocketContext);
     if (!context) {
-        throw new Error('useSocket must be used within a SocketProvider');
+        throw new Error('useSocket must be used within SocketProvider');
     }
     return context;
 };
@@ -14,83 +14,73 @@ export const useSocket = () => {
 export const SocketProvider = ({ children, user }) => {
     const [socket, setSocket] = useState(null);
     const [isConnected, setIsConnected] = useState(false);
-    const [error, setError] = useState(null);
-
-    const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
     useEffect(() => {
-        if (user) {
-            console.log('🔌 Creating global socket connection...');
-            const newSocket = io(API_URL, {
-                reconnection: true,
-                reconnectionAttempts: 5,
-                reconnectionDelay: 1000,
-                transports: ["websocket", "polling"],
-                withCredentials: true
-            });
+        if (!user) return;
 
-            // Connection events
-            newSocket.on('connect', () => {
-                console.log('✅ Global socket connected:', newSocket.id);
-                setIsConnected(true);
-                setError(null);
-            });
+        const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
-            newSocket.on('disconnect', (reason) => {
-                console.log('❌ Global socket disconnected:', reason);
-                setIsConnected(false);
-            });
+        console.log('🔌 [SocketContext] Connecting to:', API_URL);
 
-            newSocket.on('connect_error', (err) => {
-                console.error('🔌 Global socket connection error:', err);
-                setError(err.message);
-                setIsConnected(false);
-            });
+        const newSocket = io(API_URL, {
+            withCredentials: true,
+            transports: ['websocket', 'polling'],
+            reconnection: true,           // ← Enable auto reconnect
+            reconnectionAttempts: 5,      // ← Max 5 attempts
+            reconnectionDelay: 1000,      // ← Wait 1s between attempts
+            reconnectionDelayMax: 5000,   // ← Max 5s delay
+            timeout: 20000
+        });
 
-            newSocket.on('reconnect', () => {
-                console.log('🔄 Global socket reconnected');
-                setIsConnected(true);
-                setError(null);
-            });
+        // Connection events
+        newSocket.on('connect', () => {
+            console.log('✅ Socket connected:', newSocket.id);
+            setIsConnected(true);
+        });
 
-            setSocket(newSocket);
+        newSocket.on('disconnect', (reason) => {
+            console.log('🔌 Socket disconnected:', reason);
+            setIsConnected(false);
 
-            return () => {
-                console.log('🔌 Cleaning up global socket connection...');
-                newSocket.disconnect();
-                setSocket(null);
-                setIsConnected(false);
-            };
-        } else {
-            // User logged out, cleanup
-            if (socket) {
-                console.log('🔌 User logged out, cleaning up socket...');
-                socket.disconnect();
-                setSocket(null);
-                setIsConnected(false);
-                setError(null);
+            if (reason === 'io server disconnect') {
+                // Server manually disconnected, reconnect manually
+                newSocket.connect();
             }
-        }
-    }, [user, API_URL]);
+            // Other reasons will auto-reconnect
+        });
 
-    const socketUtils = {
-        socket,
-        isConnected,
-        error,
-        
-        // Helper để emit events
-        emit: useCallback((event, data) => {
-            if (socket && isConnected) {
-                socket.emit(event, data);
-                return true;
-            }
-            console.warn('Socket not connected, cannot emit:', event);
-            return false;
-        }, [socket, isConnected])
-    };
+        newSocket.on('connect_error', (error) => {
+            console.error('❌ Socket connection error:', error.message);
+            setIsConnected(false);
+        });
+
+        newSocket.on('reconnect', (attemptNumber) => {
+            console.log(`🔄 Socket reconnected after ${attemptNumber} attempts`);
+            setIsConnected(true);
+        });
+
+        newSocket.on('reconnect_attempt', (attemptNumber) => {
+            console.log(`🔄 Socket reconnection attempt ${attemptNumber}`);
+        });
+
+        newSocket.on('reconnect_error', (error) => {
+            console.error('❌ Socket reconnection error:', error.message);
+        });
+
+        newSocket.on('reconnect_failed', () => {
+            console.error('❌ Socket reconnection failed after all attempts');
+        });
+
+        setSocket(newSocket);
+
+        return () => {
+            console.log('🛑 [SocketContext] Cleaning up socket connection');
+            newSocket.close();
+        };
+    }, [user]);
 
     return (
-        <SocketContext.Provider value={socketUtils}>
+        <SocketContext.Provider value={{ socket, isConnected }}>
             {children}
         </SocketContext.Provider>
     );

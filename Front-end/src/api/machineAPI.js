@@ -51,7 +51,18 @@ const getMachineByMachineId = async (machineId) => {
         const response = await axios.get(`${API_URL}/api/machines/machineId/${machineId}`, {
             withCredentials: true
         });
-        return { success: true, data: response.data };
+        
+        if (response.data.success && response.data.machine) {
+            return { 
+                success: true, 
+                data: response.data.machine 
+            };
+        }
+        
+        return { 
+            success: false, 
+            message: "Machine not found" 
+        };
     } catch (err) {
         return { 
             success: false, 

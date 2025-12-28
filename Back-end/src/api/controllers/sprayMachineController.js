@@ -9,11 +9,9 @@ export const getSprayRealtimeData = async (req, res) => {
         const { machineId } = req.params;
         console.log(`📊 [Controller] GET Realtime for: ${machineId}`);
         
-        const todayData = await SprayMachineService.getTodayData(machineId);
+        const todayData = await SprayMachineService.getLatestData(machineId);
         
-        const currentActiveTime = SprayMachineService.getCurrentActiveTime(todayData);
-        const currentStopTime = SprayMachineService.getCurrentStopTime(todayData);
-        
+        // ✅ FIX: Lấy trực tiếp từ DB, KHÔNG dùng getCurrentActiveTime/getCurrentStopTime
         const realtimeData = {
             sprayStatus: todayData.lastStatus,
             pressure: 0,
@@ -21,14 +19,20 @@ export const getSprayRealtimeData = async (req, res) => {
             flowRate: 0,
             totalPaintUsed: 0,
             productCount: 0,
-            activeTime: parseFloat(currentActiveTime.toFixed(2)),
-            stopTime: parseFloat(currentStopTime.toFixed(2)),
+            activeTime: parseFloat(todayData.activeTime.toFixed(2)),      // ← Lấy từ DB
+            stopTime: parseFloat(todayData.stopTime.toFixed(2)),          // ← Lấy từ DB
             energyConsumption: parseFloat(todayData.totalEnergyConsumed.toFixed(3)),
             errorCode: 0,
             operatorName: 'N/A',
             lastUpdate: todayData.lastUpdate,
             isConnected: true
         };
+        
+        console.log(`📤 [Controller] Realtime response:`, {
+            activeTime: realtimeData.activeTime,
+            stopTime: realtimeData.stopTime,
+            lastStatus: realtimeData.sprayStatus
+        });
         
         res.json(realtimeData);
         
@@ -50,21 +54,28 @@ export const getSprayDailyData = async (req, res) => {
         const { machineId } = req.params;
         console.log(`📅 [Controller] GET Daily for: ${machineId}`);
         
-        const data = await SprayMachineService.getTodayData(machineId);
-        const currentActiveTime = SprayMachineService.getCurrentActiveTime(data);
-        const currentStopTime = SprayMachineService.getCurrentStopTime(data);
-        const efficiency = (currentActiveTime / 12) * 100;
+        const data = await SprayMachineService.getLatestData(machineId);
+        
+        // ✅ FIX: Lấy trực tiếp từ DB, KHÔNG dùng getCurrentActiveTime/getCurrentStopTime
+        const efficiency = (data.activeTime / 12) * 100;
         
         const dailyData = {
             date: data.date,
-            activeTime: parseFloat(currentActiveTime.toFixed(2)),
-            stopTime: parseFloat(currentStopTime.toFixed(2)),
+            operatingTime: parseFloat(data.activeTime.toFixed(2)),       // ← Lấy từ DB
+            pausedTime: parseFloat(data.stopTime.toFixed(2)),            // ← Lấy từ DB
             totalPaintUsed: 0,
             productCount: 0,
             energyConsumption: parseFloat(data.totalEnergyConsumed.toFixed(3)),
             efficiency: parseFloat(efficiency.toFixed(1)),
-            avgCurrent: 0
+            avgCurrent: 0,
+            current: 0
         };
+        
+        console.log(`📤 [Controller] Daily response:`, {
+            operatingTime: dailyData.operatingTime,
+            pausedTime: dailyData.pausedTime,
+            efficiency: dailyData.efficiency
+        });
         
         res.json(dailyData);
         
@@ -88,10 +99,11 @@ export const getSpray30DaysHistory = async (req, res) => {
         
         const history = await SprayMachineService.get30DaysHistory(machineId);
         
+        // ✅ FIX: Lấy trực tiếp từ DB
         const formattedHistory = history.map(day => ({
             date: day.date,
-            activeTime: parseFloat(day.activeTime.toFixed(2)),
-            stopTime: parseFloat(day.stopTime.toFixed(2)),
+            operatingTime: parseFloat(day.activeTime.toFixed(2)),        // ← Lấy từ DB
+            pausedTime: parseFloat(day.stopTime.toFixed(2)),             // ← Lấy từ DB
             energyConsumption: parseFloat(day.totalEnergyConsumed.toFixed(3)),
             efficiency: parseFloat(((day.activeTime / 12) * 100).toFixed(1))
         }));
@@ -117,7 +129,16 @@ export const getSprayStatistics = async (req, res) => {
         console.log(`📊 [Controller] GET Statistics for: ${machineId}`);
         
         const stats = await SprayMachineService.getStatistics(machineId);
-        res.json(stats);
+        
+        // Stats đã dùng DB data, không cần sửa
+        const mappedStats = {
+            totalOperatingTime: parseFloat(stats.totalActiveTime.toFixed(2)),
+            totalEnergyConsumed: parseFloat(stats.totalEnergyConsumed.toFixed(2)),
+            averageOperatingPercentage: parseFloat(stats.averageEfficiency.toFixed(1)),
+            daysCount: stats.daysCount
+        };
+        
+        res.json(mappedStats);
         
     } catch (error) {
         console.error('❌ [Controller] Statistics Error:', error);
@@ -137,15 +158,16 @@ export const getSprayPieChartData = async (req, res) => {
         const { machineId } = req.params;
         console.log(`📊 [Controller] GET Pie Chart for: ${machineId}`);
         
-        const data = await SprayMachineService.getTodayData(machineId);
-        const currentActiveTime = SprayMachineService.getCurrentActiveTime(data);
-        const currentStopTime = SprayMachineService.getCurrentStopTime(data);
+        const data = await SprayMachineService.getLatestData(machineId);
         
+        // ✅ FIX: Lấy trực tiếp từ DB
         const pieChartData = {
-            activeTime: parseFloat(currentActiveTime.toFixed(2)),
-            stopTime: parseFloat(currentStopTime.toFixed(2)),
+            operatingTime: parseFloat(data.activeTime.toFixed(2)),       // ← Lấy từ DB
+            pausedTime: parseFloat(data.stopTime.toFixed(2)),            // ← Lấy từ DB
             idleTime: 0
         };
+        
+        console.log(`📤 [Controller] Pie Chart response:`, pieChartData);
         
         res.json(pieChartData);
         
@@ -161,7 +183,6 @@ export const getSprayPieChartData = async (req, res) => {
 
 /**
  * POST /api/spray-machine/mqtt-update/:machineId
- * Endpoint nhận MQTT data
  */
 export const handleMQTTUpdate = async (req, res) => {
     try {
@@ -170,7 +191,6 @@ export const handleMQTTUpdate = async (req, res) => {
         
         console.log(`📨 [Controller] POST MQTT Update for: ${machineId}`, { status, powerConsumption });
         
-        // Validate
         if (typeof status !== 'number' || (status !== 0 && status !== 1)) {
             return res.status(400).json({
                 success: false,
@@ -194,13 +214,14 @@ export const handleMQTTUpdate = async (req, res) => {
         
         await SprayMachineService.updateMachineConnectionStatus(machineId, true);
         
+        // ✅ FIX: Lấy trực tiếp từ DB
         res.json({
             success: true,
             message: 'MQTT data processed successfully',
             data: {
                 date: updatedData.date,
-                operatingTime: parseFloat(updatedData.operatingTime.toFixed(2)),
-                pausedTime: parseFloat(updatedData.pausedTime.toFixed(2)),
+                operatingTime: parseFloat(updatedData.activeTime.toFixed(2)),    // ← Lấy từ DB
+                pausedTime: parseFloat(updatedData.stopTime.toFixed(2)),         // ← Lấy từ DB
                 totalEnergyConsumed: parseFloat(updatedData.totalEnergyConsumed.toFixed(3)),
                 lastStatus: updatedData.lastStatus
             }
