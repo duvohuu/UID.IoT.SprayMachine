@@ -1,42 +1,41 @@
-/**
- * ========================================
- * SPRAY MACHINE CONTROLLER
- * ========================================
- * Mock data controllers for testing UI
- */
+import * as SprayMachineService from '../../services/sprayMachineService.js';
+import { getMQTTStatus } from '../../iot/mqttClient.js';
 
 /**
  * GET /api/spray-machine/realtime/:machineId
- * Lấy dữ liệu realtime của Spray Machine
  */
 export const getSprayRealtimeData = async (req, res) => {
     try {
         const { machineId } = req.params;
+        console.log(`📊 [Controller] GET Realtime for: ${machineId}`);
         
-        console.log(`📊 [Spray Realtime] Request for: ${machineId}`);
-
-        // Mock realtime data
-        const mockData = {
-            machineId,
-            machineName: 'Spray Machine 001',
-            sprayStatus: Math.floor(Math.random() * 3), // 0: Dừng, 1: Phun, 2: Chuẩn bị
-            pressure: parseFloat((Math.random() * 5 + 3).toFixed(2)), // 3-8 bar
-            temperature: parseFloat((Math.random() * 10 + 20).toFixed(1)), // 20-30°C
-            flowRate: parseInt((Math.random() * 500 + 500).toFixed(0)), // 500-1000 ml/min
-            totalPaintUsed: parseFloat((Math.random() * 50 + 10).toFixed(2)), // 10-60 lít
-            productCount: Math.floor(Math.random() * 100 + 50), // 50-150
-            operatingTime: parseFloat((Math.random() * 8 + 2).toFixed(1)), // 2-10h
-            pausedTime: parseFloat((Math.random() * 2).toFixed(1)), // 0-2h
-            errorCode: Math.random() > 0.9 ? Math.floor(Math.random() * 4 + 1) : 0,
-            operatorName: ['John Doe', 'Jane Smith', 'Mike Johnson'][Math.floor(Math.random() * 3)],
-            isConnected: true,
-            lastUpdate: new Date().toISOString()
+        const todayData = await SprayMachineService.getTodayData(machineId);
+        
+        const currentActiveTime = SprayMachineService.getCurrentActiveTime(todayData);
+        const currentStopTime = SprayMachineService.getCurrentStopTime(todayData);
+        
+        const realtimeData = {
+            sprayStatus: todayData.lastStatus,
+            pressure: 0,
+            temperature: 0,
+            flowRate: 0,
+            totalPaintUsed: 0,
+            productCount: 0,
+            activeTime: parseFloat(currentActiveTime.toFixed(2)),
+            stopTime: parseFloat(currentStopTime.toFixed(2)),
+            energyConsumption: parseFloat(todayData.totalEnergyConsumed.toFixed(3)),
+            errorCode: 0,
+            operatorName: 'N/A',
+            lastUpdate: todayData.lastUpdate,
+            isConnected: true
         };
-
-        res.json(mockData);
+        
+        res.json(realtimeData);
+        
     } catch (error) {
-        console.error('❌ [Spray Realtime] Error:', error);
+        console.error('❌ [Controller] Realtime Error:', error);
         res.status(500).json({ 
+            success: false,
             message: 'Error fetching spray realtime data', 
             error: error.message 
         });
@@ -45,29 +44,34 @@ export const getSprayRealtimeData = async (req, res) => {
 
 /**
  * GET /api/spray-machine/daily/:machineId
- * Lấy dữ liệu hàng ngày
  */
 export const getSprayDailyData = async (req, res) => {
     try {
         const { machineId } = req.params;
+        console.log(`📅 [Controller] GET Daily for: ${machineId}`);
         
-        console.log(`📅 [Spray Daily] Request for: ${machineId}`);
-
-        // Mock daily data
-        const mockData = {
-            date: new Date().toISOString().split('T')[0],
-            operatingTime: parseFloat((Math.random() * 6 + 4).toFixed(1)), // 4-10h
-            pausedTime: parseFloat((Math.random() * 2).toFixed(1)), // 0-2h
-            totalPaintUsed: parseFloat((Math.random() * 40 + 10).toFixed(2)), // 10-50 lít
-            productCount: Math.floor(Math.random() * 80 + 40), // 40-120
-            energyConsumption: parseFloat((Math.random() * 30 + 10).toFixed(2)), // 10-40 kWh
-            efficiency: parseFloat((Math.random() * 30 + 60).toFixed(1)) // 60-90%
+        const data = await SprayMachineService.getTodayData(machineId);
+        const currentActiveTime = SprayMachineService.getCurrentActiveTime(data);
+        const currentStopTime = SprayMachineService.getCurrentStopTime(data);
+        const efficiency = (currentActiveTime / 12) * 100;
+        
+        const dailyData = {
+            date: data.date,
+            activeTime: parseFloat(currentActiveTime.toFixed(2)),
+            stopTime: parseFloat(currentStopTime.toFixed(2)),
+            totalPaintUsed: 0,
+            productCount: 0,
+            energyConsumption: parseFloat(data.totalEnergyConsumed.toFixed(3)),
+            efficiency: parseFloat(efficiency.toFixed(1)),
+            avgCurrent: 0
         };
-
-        res.json(mockData);
+        
+        res.json(dailyData);
+        
     } catch (error) {
-        console.error('❌ [Spray Daily] Error:', error);
+        console.error('❌ [Controller] Daily Error:', error);
         res.status(500).json({ 
+            success: false,
             message: 'Error fetching spray daily data', 
             error: error.message 
         });
@@ -76,38 +80,28 @@ export const getSprayDailyData = async (req, res) => {
 
 /**
  * GET /api/spray-machine/history/:machineId
- * Lấy lịch sử 30 ngày
  */
 export const getSpray30DaysHistory = async (req, res) => {
     try {
         const { machineId } = req.params;
-        const limit = parseInt(req.query.limit) || 30;
+        console.log(`📜 [Controller] GET History for: ${machineId}`);
         
-        console.log(`📜 [Spray History] Request for: ${machineId}, limit: ${limit}`);
-
-        // Generate mock history
-        const mockHistory = [];
-        const today = new Date();
+        const history = await SprayMachineService.get30DaysHistory(machineId);
         
-        for (let i = 0; i < limit; i++) {
-            const date = new Date(today);
-            date.setDate(date.getDate() - i);
-            
-            mockHistory.push({
-                date: date.toISOString().split('T')[0],
-                operatingTime: parseFloat((Math.random() * 6 + 4).toFixed(1)),
-                pausedTime: parseFloat((Math.random() * 2).toFixed(1)),
-                totalPaintUsed: parseFloat((Math.random() * 40 + 10).toFixed(2)),
-                productCount: Math.floor(Math.random() * 80 + 40),
-                energyConsumption: parseFloat((Math.random() * 30 + 10).toFixed(2)),
-                efficiency: parseFloat((Math.random() * 30 + 60).toFixed(1))
-            });
-        }
-
-        res.json(mockHistory);
+        const formattedHistory = history.map(day => ({
+            date: day.date,
+            activeTime: parseFloat(day.activeTime.toFixed(2)),
+            stopTime: parseFloat(day.stopTime.toFixed(2)),
+            energyConsumption: parseFloat(day.totalEnergyConsumed.toFixed(3)),
+            efficiency: parseFloat(((day.activeTime / 12) * 100).toFixed(1))
+        }));
+        
+        res.json(formattedHistory);
+        
     } catch (error) {
-        console.error('❌ [Spray History] Error:', error);
+        console.error('❌ [Controller] History Error:', error);
         res.status(500).json({ 
+            success: false,
             message: 'Error fetching spray history', 
             error: error.message 
         });
@@ -116,27 +110,19 @@ export const getSpray30DaysHistory = async (req, res) => {
 
 /**
  * GET /api/spray-machine/statistics/:machineId
- * Lấy thống kê tổng hợp 30 ngày
  */
 export const getSprayStatistics = async (req, res) => {
     try {
         const { machineId } = req.params;
+        console.log(`📊 [Controller] GET Statistics for: ${machineId}`);
         
-        console.log(`📊 [Spray Statistics] Request for: ${machineId}`);
-
-        // Mock statistics
-        const mockStats = {
-            totalOperatingTime: parseFloat((Math.random() * 100 + 100).toFixed(1)), // 100-200h
-            totalPaintUsed: parseFloat((Math.random() * 500 + 300).toFixed(2)), // 300-800 lít
-            totalProducts: Math.floor(Math.random() * 2000 + 1000), // 1000-3000
-            averageEfficiency: parseFloat((Math.random() * 20 + 70).toFixed(1)), // 70-90%
-            totalEnergyConsumption: parseFloat((Math.random() * 500 + 300).toFixed(2)) // 300-800 kWh
-        };
-
-        res.json(mockStats);
+        const stats = await SprayMachineService.getStatistics(machineId);
+        res.json(stats);
+        
     } catch (error) {
-        console.error('❌ [Spray Statistics] Error:', error);
+        console.error('❌ [Controller] Statistics Error:', error);
         res.status(500).json({ 
+            success: false,
             message: 'Error fetching spray statistics', 
             error: error.message 
         });
@@ -145,32 +131,105 @@ export const getSprayStatistics = async (req, res) => {
 
 /**
  * GET /api/spray-machine/pie-chart/:machineId
- * Lấy dữ liệu biểu đồ tròn
  */
 export const getSprayPieChartData = async (req, res) => {
     try {
         const { machineId } = req.params;
+        console.log(`📊 [Controller] GET Pie Chart for: ${machineId}`);
         
-        console.log(`🥧 [Spray Pie Chart] Request for: ${machineId}`);
-
-        // Mock pie chart data
-        const operatingTime = Math.random() * 6 + 4; // 4-10h
-        const pausedTime = Math.random() * 2; // 0-2h
-        const totalTime = 12; // Work shift: 6h-18h
-        const idleTime = totalTime - operatingTime - pausedTime;
-
-        const mockData = {
-            operatingTime: parseFloat(operatingTime.toFixed(1)),
-            pausedTime: parseFloat(pausedTime.toFixed(1)),
-            idleTime: parseFloat(Math.max(0, idleTime).toFixed(1)),
-            totalTime
+        const data = await SprayMachineService.getTodayData(machineId);
+        const currentActiveTime = SprayMachineService.getCurrentActiveTime(data);
+        const currentStopTime = SprayMachineService.getCurrentStopTime(data);
+        
+        const pieChartData = {
+            activeTime: parseFloat(currentActiveTime.toFixed(2)),
+            stopTime: parseFloat(currentStopTime.toFixed(2)),
+            idleTime: 0
         };
-
-        res.json(mockData);
+        
+        res.json(pieChartData);
+        
     } catch (error) {
-        console.error('❌ [Spray Pie Chart] Error:', error);
+        console.error('❌ [Controller] Pie Chart Error:', error);
         res.status(500).json({ 
+            success: false,
             message: 'Error fetching spray pie chart data', 
+            error: error.message 
+        });
+    }
+};
+
+/**
+ * POST /api/spray-machine/mqtt-update/:machineId
+ * Endpoint nhận MQTT data
+ */
+export const handleMQTTUpdate = async (req, res) => {
+    try {
+        const { machineId } = req.params;
+        const { status, powerConsumption } = req.body;
+        
+        console.log(`📨 [Controller] POST MQTT Update for: ${machineId}`, { status, powerConsumption });
+        
+        // Validate
+        if (typeof status !== 'number' || (status !== 0 && status !== 1)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid status. Must be 0 or 1'
+            });
+        }
+        
+        if (typeof powerConsumption !== 'number' || powerConsumption < 0) {
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid powerConsumption. Must be >= 0'
+            });
+        }
+        
+        await SprayMachineService.verifyMachine(machineId);
+        
+        const updatedData = await SprayMachineService.processMQTTUpdate(machineId, {
+            status,
+            powerConsumption
+        });
+        
+        await SprayMachineService.updateMachineConnectionStatus(machineId, true);
+        
+        res.json({
+            success: true,
+            message: 'MQTT data processed successfully',
+            data: {
+                date: updatedData.date,
+                operatingTime: parseFloat(updatedData.operatingTime.toFixed(2)),
+                pausedTime: parseFloat(updatedData.pausedTime.toFixed(2)),
+                totalEnergyConsumed: parseFloat(updatedData.totalEnergyConsumed.toFixed(3)),
+                lastStatus: updatedData.lastStatus
+            }
+        });
+        
+    } catch (error) {
+        console.error('❌ [Controller] MQTT Update Error:', error);
+        res.status(500).json({ 
+            success: false,
+            message: 'Error processing MQTT update', 
+            error: error.message 
+        });
+    }
+};
+
+export const getMQTTConnectionStatus = async (req, res) => {
+    try {
+        const status = getMQTTStatus();
+        
+        res.json({
+            success: true,
+            mqtt: status,
+            timestamp: new Date().toISOString()
+        });
+    } catch (error) {
+        console.error('❌ [Controller] MQTT Status Error:', error);
+        res.status(500).json({ 
+            success: false,
+            message: 'Error fetching MQTT status', 
             error: error.message 
         });
     }
