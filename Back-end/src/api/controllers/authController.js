@@ -8,22 +8,25 @@ import User from '../../models/User.model.js';
  */
 
 /**
- * Generate JWT tokens
+ * Generate Access Token
  */
-const generateTokens = (userId) => {
-    const accessToken = jwt.sign(
-        { userId },
+const generateAccessToken = (user) => {
+    return jwt.sign(
+        { userId: user.userId || user._id },
         process.env.JWT_SECRET,
         { expiresIn: process.env.JWT_EXPIRE || '15m' }
     );
+};
 
-    const refreshToken = jwt.sign(
-        { userId },
+/**
+ * Generate Refresh Token
+ */
+const generateRefreshToken = (user) => {
+    return jwt.sign(
+        { userId: user.userId || user._id },
         process.env.JWT_REFRESH_SECRET,
         { expiresIn: process.env.JWT_REFRESH_EXPIRE || '7d' }
     );
-
-    return { accessToken, refreshToken };
 };
 
 /**
@@ -33,83 +36,77 @@ const generateTokens = (userId) => {
  */
 export const login = async (req, res) => {
     try {
-        const { email, password } = req.body;
+        const { username, password } = req.body;
 
-        // Validation
-        if (!email || !password) {
+        // Validate input
+        if (!username || !password) {
             return res.status(400).json({
                 success: false,
-                message: 'Please provide email and password'
+                message: 'Username và password là bắt buộc'
             });
         }
 
-        // Find user (include password field)
-        const user = await User.findOne({ email }).select('+password');
-
+        // Find user
+        const user = await User.findOne({ username }).select('+password');
         if (!user) {
             return res.status(401).json({
                 success: false,
-                message: 'Invalid credentials'
+                message: 'Username hoặc password không đúng'
             });
         }
 
-        // Check if user is active
-        if (!user.isActive) {
-            return res.status(401).json({
-                success: false,
-                message: 'Account is disabled'
-            });
-        }
-
-        // Check password
+        // Verify password
         const isPasswordValid = await user.comparePassword(password);
-
         if (!isPasswordValid) {
             return res.status(401).json({
                 success: false,
-                message: 'Invalid credentials'
+                message: 'Username hoặc password không đúng'
             });
         }
 
         // Generate tokens
-        const { accessToken, refreshToken } = generateTokens(user.userId);
+        const accessToken = generateAccessToken(user);
+        const refreshToken = generateRefreshToken(user);
 
         // Save refresh token to database
         user.refreshToken = refreshToken;
-        user.lastLogin = new Date();
         await user.save();
 
-        // Set cookies
+        // ✅ FIX: Set cookies với SameSite: 'none' cho cross-origin
         res.cookie('accessToken', accessToken, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
-            sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
+            sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
             maxAge: 15 * 60 * 1000 // 15 minutes
         });
 
         res.cookie('refreshToken', refreshToken, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
-            sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
+            sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
             maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
         });
 
-        // Remove password from response
-        const userResponse = user.toJSON();
+        console.log(`✅ User logged in: ${user.username} (${user.role})`);
+        console.log(`🍪 Cookies set: secure=${process.env.NODE_ENV === 'production'}, sameSite=${process.env.NODE_ENV === 'production' ? 'none' : 'lax'}`);
 
-        res.json({
+        // Return user data (exclude password & refreshToken)
+        const userData = user.toObject();
+        delete userData.password;
+        delete userData.refreshToken;
+
+        res.status(200).json({
             success: true,
-            message: 'Login successful',
-            user: userResponse,
-            accessToken
+            message: 'Đăng nhập thành công',
+            user: userData
         });
 
-        console.log(`✅ User logged in: ${user.username} (${user.role})`);
     } catch (error) {
-        console.error('Login error:', error);
+        console.error('❌ Login error:', error);
         res.status(500).json({
             success: false,
-            message: 'Server error during login'
+            message: 'Lỗi server khi đăng nhập',
+            error: error.message
         });
     }
 };
@@ -131,9 +128,18 @@ export const logout = async (req, res) => {
             );
         }
 
-        // Clear cookies
-        res.clearCookie('accessToken');
-        res.clearCookie('refreshToken');
+        // Clear cookies với options phù hợp
+        res.clearCookie('accessToken', {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax'
+        });
+        
+        res.clearCookie('refreshToken', {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax'
+        });
 
         res.json({
             success: true,
@@ -142,7 +148,7 @@ export const logout = async (req, res) => {
 
         console.log(`✅ User logged out`);
     } catch (error) {
-        console.error('Logout error:', error);
+        console.error('❌ Logout error:', error);
         res.status(500).json({
             success: false,
             message: 'Server error during logout'
@@ -167,7 +173,15 @@ export const refreshToken = async (req, res) => {
         }
 
         // Verify refresh token
-        const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
+        let decoded;
+        try {
+            decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
+        } catch (err) {
+            return res.status(401).json({
+                success: false,
+                message: 'Invalid or expired refresh token'
+            });
+        }
 
         // Find user
         const user = await User.findOne({ 
@@ -183,26 +197,24 @@ export const refreshToken = async (req, res) => {
         }
 
         // Generate new access token
-        const accessToken = jwt.sign(
-            { userId: user.userId },
-            process.env.JWT_SECRET,
-            { expiresIn: process.env.JWT_EXPIRE || '15m' }
-        );
+        const newAccessToken = generateAccessToken(user);
 
-        // Set new access token cookie
-        res.cookie('accessToken', accessToken, {
+        // ✅ FIX: Set new access token cookie với SameSite: 'none'
+        res.cookie('accessToken', newAccessToken, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
-            sameSite: 'strict',
+            sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
             maxAge: 15 * 60 * 1000
         });
 
+        console.log(`✅ Access token refreshed for user: ${user.username}`);
+
         res.json({
             success: true,
-            accessToken
+            message: 'Access token refreshed successfully'
         });
     } catch (error) {
-        console.error('Refresh token error:', error);
+        console.error('❌ Refresh token error:', error);
         res.status(401).json({
             success: false,
             message: 'Invalid or expired refresh token'
@@ -227,7 +239,15 @@ export const verifyToken = async (req, res) => {
         }
 
         // Verify token
-        const decoded = jwt.verify(accessToken, process.env.JWT_SECRET);
+        let decoded;
+        try {
+            decoded = jwt.verify(accessToken, process.env.JWT_SECRET);
+        } catch (err) {
+            return res.json({
+                valid: false,
+                message: 'Invalid token'
+            });
+        }
 
         // Get user
         const user = await User.findOne({ userId: decoded.userId }).select('-password -refreshToken');
@@ -244,6 +264,7 @@ export const verifyToken = async (req, res) => {
             user: user.toJSON()
         });
     } catch (error) {
+        console.error('❌ Verify token error:', error);
         res.json({
             valid: false,
             message: 'Invalid token'

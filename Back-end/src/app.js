@@ -22,13 +22,18 @@ const corsOrigins = process.env.CORS_ORIGINS
     : ['http://localhost:5173'];
 
 console.log('🌐 CORS Origins:', corsOrigins);
+console.log('🔒 NODE_ENV:', process.env.NODE_ENV);  // ← Thêm log
 
 app.use(cors({
     origin: corsOrigins, 
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'Cookie']
+    allowedHeaders: ['Content-Type', 'Authorization', 'Cookie'],
+    exposedHeaders: ['Set-Cookie']  // ← Thêm dòng này để browser nhận được Set-Cookie header
 }));
+
+// ✅ FIX: Handle preflight requests
+app.options('*', cors());
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -62,16 +67,29 @@ app.get('/', (req, res) => {
         message: 'IoT Spray Machine API Server',
         timestamp: new Date().toISOString(),
         env: process.env.NODE_ENV,
-        corsOrigins: corsOrigins  // ✅ Debug info
+        corsOrigins: corsOrigins,
+        cookieSettings: {
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax'
+        }
+    });
+});
+
+// ==================== 404 HANDLER ====================
+app.use((req, res, next) => {
+    res.status(404).json({
+        success: false,
+        message: `Route ${req.method} ${req.url} not found`
     });
 });
 
 // ==================== ERROR HANDLER ====================
 app.use((err, req, res, next) => {
-    console.error('Error:', err);
+    console.error('❌ Error:', err);
     res.status(err.status || 500).json({
+        success: false,
         message: err.message || 'Internal Server Error',
-        error: process.env.NODE_ENV === 'development' ? err : {}
+        error: process.env.NODE_ENV === 'development' ? err.stack : undefined
     });
 });
 
