@@ -36,22 +36,22 @@ const generateRefreshToken = (user) => {
  */
 export const login = async (req, res) => {
     try {
-        const { username, password } = req.body;
+        const { email, password } = req.body;  // ← Đổi username → email
 
         // Validate input
-        if (!username || !password) {
+        if (!email || !password) {  // ← Đổi username → email
             return res.status(400).json({
                 success: false,
-                message: 'Username và password là bắt buộc'
+                message: 'Email và password là bắt buộc'  // ← Đổi message
             });
         }
 
-        // Find user
-        const user = await User.findOne({ username }).select('+password');
+        // Find user by email
+        const user = await User.findOne({ email }).select('+password');  // ← Đổi username → email
         if (!user) {
             return res.status(401).json({
                 success: false,
-                message: 'Username hoặc password không đúng'
+                message: 'Email hoặc password không đúng'  // ← Đổi message
             });
         }
 
@@ -60,7 +60,7 @@ export const login = async (req, res) => {
         if (!isPasswordValid) {
             return res.status(401).json({
                 success: false,
-                message: 'Username hoặc password không đúng'
+                message: 'Email hoặc password không đúng'  // ← Đổi message
             });
         }
 
@@ -72,7 +72,7 @@ export const login = async (req, res) => {
         user.refreshToken = refreshToken;
         await user.save();
 
-        // ✅ FIX: Set cookies với SameSite: 'none' cho cross-origin
+        // ✅ Set cookies với SameSite: 'none' cho cross-origin
         res.cookie('accessToken', accessToken, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
@@ -98,6 +98,7 @@ export const login = async (req, res) => {
         res.status(200).json({
             success: true,
             message: 'Đăng nhập thành công',
+            accessToken,
             user: userData
         });
 
