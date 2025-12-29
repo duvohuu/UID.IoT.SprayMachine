@@ -5,7 +5,6 @@ import { ArrowBack } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useMachine } from '../hooks/useMachine';
 import { useWorkShifts } from '../hooks/useWorkShifts';
-import { useCSVExport } from '../hooks/useCSVExport';
 import { useMachineSocketEvents } from '../hooks/useSocketEvents';
 import MachineHeader from '../components/machine/MachineHeader';
 import PowderMachineDataDisplay from '../components/powderMachine/PowderMachineDataDisplay';
@@ -16,7 +15,6 @@ const PowderMachinePage = ({ user }) => {
     const navigate = useNavigate();
     const [selectedShifts, setSelectedShifts] = useState([]);
     const [machineRealtime, setMachineRealtime] = useState(null);
-    const { exportMultipleShifts, isExporting } = useCSVExport();
     
     const {
         machine,
@@ -77,17 +75,6 @@ const PowderMachinePage = ({ user }) => {
     const handleSelectAllShifts = (shifts) => {
         console.log('🔄 Select all shifts:', shifts.length);
         setSelectedShifts(shifts);
-    };
-
-    const handleExportSelectedShifts = async () => {
-        if (selectedShifts.length === 0) {
-            alert('Vui lòng chọn ít nhất một ca để xuất!');
-            return;
-        }
-        
-        console.log('📤 Exporting shifts:', selectedShifts.map(s => s.shiftId));
-        await exportMultipleShifts(selectedShifts, user, machine);
-        setSelectedShifts([]);
     };
 
     useEffect(() => {
@@ -153,8 +140,6 @@ const PowderMachinePage = ({ user }) => {
                         selectedShifts={selectedShifts}
                         onShiftSelect={handleShiftSelect}
                         onSelectAllShifts={handleSelectAllShifts}
-                        onExportSelectedShifts={handleExportSelectedShifts}
-                        isExporting={isExporting}
                     />
                 </Grid>
                 
