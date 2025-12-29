@@ -28,10 +28,10 @@ export const getSprayRealtimeData = async (req, res) => {
         };
         
         // console.log(`📤 [Controller] Realtime response:`, {
-            activeTime: realtimeData.activeTime,
-            stopTime: realtimeData.stopTime,
-            lastStatus: realtimeData.sprayStatus
-        });
+        //     activeTime: realtimeData.activeTime,
+        //     stopTime: realtimeData.stopTime,
+        //     lastStatus: realtimeData.sprayStatus
+        // });
         
         res.json(realtimeData);
         
@@ -71,10 +71,10 @@ export const getSprayDailyData = async (req, res) => {
         };
         
         // console.log(`📤 [Controller] Daily response:`, {
-            operatingTime: dailyData.operatingTime,
-            pausedTime: dailyData.pausedTime,
-            efficiency: dailyData.efficiency
-        });
+        //     operatingTime: dailyData.operatingTime,
+        //     pausedTime: dailyData.pausedTime,
+        //     efficiency: dailyData.efficiency
+        // });
         
         res.json(dailyData);
         
