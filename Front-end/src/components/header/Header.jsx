@@ -11,7 +11,7 @@ import {
     Fade,
     Grow,
 } from "@mui/material";
-import MenuIcon from "@mui/icons-material/Menu";
+import CustomMenuIcon from "../icons/CustomMenuIcon";
 import SearchIcon from "@mui/icons-material/Search";
 import { styled, alpha } from "@mui/material/styles";
 import LoginDialog from "../header/LoginDialog";
@@ -77,20 +77,21 @@ const StyledInputBase = styled(InputBase)(({ theme }) => ({
 }));
 
 const StyledMenuButton = styled(IconButton)(({ theme }) => ({
-    marginRight: theme.spacing(2),
+    marginLeft: theme.spacing(2),
     padding: theme.spacing(1),
     borderRadius: 12,
     transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-    background: alpha(theme.palette.primary.main, 0.05),
-    border: `1px solid ${alpha(theme.palette.primary.main, 0.1)}`,
     "&:hover": {
         background: `linear-gradient(135deg, ${alpha(theme.palette.primary.main, 0.15)} 0%, ${alpha(theme.palette.secondary.main, 0.1)} 100%)`,
-        border: `1px solid ${alpha(theme.palette.primary.main, 0.2)}`,
         transform: "translateY(-1px) scale(1.05)",
         boxShadow: `0 6px 20px ${alpha(theme.palette.primary.main, 0.2)}`,
     },
     "& .MuiSvgIcon-root": {
         transition: "all 0.2s ease",
+        color: theme.palette.primary.main,
+        fontSize: '2rem', 
+        width: '2.5rem',    
+        height: '1.5rem', 
     },
     "&:hover .MuiSvgIcon-root": {
         transform: "rotate(90deg)",
@@ -159,6 +160,55 @@ const LoginText = styled(Typography)(({ theme }) => ({
     },
 }));
 
+const TitleContainer = styled(Box)(({ theme }) => ({
+    display: 'flex',
+    alignItems: 'baseline', 
+    gap: theme.spacing(0.5),
+    position: 'relative',
+}));
+
+const StyledTitle = styled(Typography)(({ theme }) => ({
+    fontWeight: 700,
+    fontSize: '1.5rem', 
+    fontStyle: 'italic',
+    background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.secondary.main} 100%)`, // ✅ Gradient
+    backgroundClip: 'text',
+    WebkitBackgroundClip: 'text',
+    WebkitTextFillColor: 'transparent',
+    letterSpacing: '0.5px',
+    whiteSpace: 'nowrap',
+    transition: 'all 0.3s ease',
+    '&:hover': {
+        filter: 'brightness(1.2)', 
+        transform: 'scale(1.02)',
+    },
+    [theme.breakpoints.down('md')]: {
+        fontSize: '1.3rem',
+    },
+    [theme.breakpoints.down('sm')]: {
+        fontSize: '1.1rem',
+    }
+}));
+
+const AdminSubscript = styled(Typography)(({ theme }) => ({
+    fontSize: '0.65rem', 
+    fontStyle: 'italic',
+    fontWeight: 600,
+    color: theme.palette.secondary.main, 
+    alignSelf: 'flex-end', 
+    marginBottom: '2px',
+    letterSpacing: '0.3px',
+    whiteSpace: 'nowrap',
+    opacity: 0.9,
+    transition: 'all 0.3s ease',
+    '&:hover': {
+        opacity: 1,
+        color: theme.palette.secondary.dark, 
+    },
+    [theme.breakpoints.down('sm')]: {
+        display: 'none', 
+    }
+}));
 const StyledAppBar = styled(AppBar)(({ theme }) => ({
     background: `linear-gradient(135deg, 
         ${alpha(theme.palette.background.paper, 0.95)} 0%, 
@@ -198,11 +248,24 @@ const Header = ({ onToggleSidebar, user, setUser }) => {
                     minHeight: "70px !important",
                     py: 1
                 }}>
-                    {/* Left Section - Menu Button + Logos */}
+                    {/* LEFT SECTION - Title + Subscript + Menu */}
                     <Box sx={{ display: "flex", alignItems: "center" }}>
+                        <Fade in={true} timeout={1000}>
+                            <TitleContainer>
+                                {/* ✅ Main Title */}
+                                <StyledTitle variant="h6">
+                                    UID IOT
+                                </StyledTitle>
+                                <AdminSubscript>
+                                    Administrator
+                                </AdminSubscript>
+                            </TitleContainer>
+                        </Fade>
+                        
+                        {/* Menu Button */}
                         <Grow in={true} timeout={800}>
                             <StyledMenuButton color="inherit" onClick={onToggleSidebar}>
-                                <MenuIcon />
+                                <CustomMenuIcon />
                             </StyledMenuButton>
                         </Grow>
                     </Box>
