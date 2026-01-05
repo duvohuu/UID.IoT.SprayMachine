@@ -40,23 +40,7 @@ export const useMachineSocketEvents = ({
                     onMachineUpdate(update);
                 }
             }
-        };
-
-        // ==================== CNC MACHINE EVENTS ====================
-        
-        /**
-         * Listen for CNC realtime data
-         * Event: 'cnc:realtime'
-         */
-        const handleCNCRealtime = (data) => {
-            if (data.machineId === machineId) {
-                console.log(`📊 [${machineId}] CNC realtime data:`, data);
-                if (onRealtimeUpdate) {
-                    onRealtimeUpdate(data);
-                }
-            }
-        };
-
+        }
         // ==================== SPRAY MACHINE EVENTS ====================
         
         /**
@@ -98,29 +82,13 @@ export const useMachineSocketEvents = ({
             }
         };
 
-        // ==================== POWDER MACHINE EVENTS ====================
-        
-        /**
-         * Listen for Powder shift updates
-         * Event: 'powder:shift-update'
-         */
-        const handlePowderShiftUpdate = (data) => {
-            if (data.machineId === machineId) {
-                console.log(`📦 [${machineId}] Powder shift update:`, data);
-                if (onRealtimeUpdate) {
-                    onRealtimeUpdate(data);
-                }
-            }
-        };
 
         // ==================== REGISTER LISTENERS ====================
         
         socket.on('machine:status-update', handleMachineStatusUpdate);
-        socket.on('cnc:realtime', handleCNCRealtime);
         socket.on('spray:realtime', handleSprayRealtime);
         socket.on('spray:daily-reset', handleSprayDailyReset);
         socket.on('spray:daily-update', handleSprayDailyUpdate);
-        socket.on('powder:shift-update', handlePowderShiftUpdate);
 
         console.log(`✅ [Socket] Listeners registered for machine: ${machineId}`);
 
@@ -130,11 +98,9 @@ export const useMachineSocketEvents = ({
             console.log(`🔌 [Socket] Cleaning up listeners for machine: ${machineId}`);
             
             socket.off('machine:status-update', handleMachineStatusUpdate);
-            socket.off('cnc:realtime', handleCNCRealtime);
             socket.off('spray:realtime', handleSprayRealtime);
             socket.off('spray:daily-reset', handleSprayDailyReset);
             socket.off('spray:daily-update', handleSprayDailyUpdate);
-            socket.off('powder:shift-update', handlePowderShiftUpdate);
         };
     }, [socket, machineId, onMachineUpdate, onRealtimeUpdate, onDailyReset]);
 };
@@ -215,7 +181,6 @@ export const useNotificationUpdates = (onNewNotification) => {
          */
         const handleNotificationUpdate = (update) => {
             console.log('🔔 [Notification] Notification updated:', update);
-            // Có thể thêm callback nếu cần
         };
 
         // Register listeners
@@ -241,5 +206,5 @@ export const useNotificationUpdates = (onNewNotification) => {
 export default {
     useMachineSocketEvents,
     useAllMachinesStatusUpdates,
-    useNotificationUpdates  // ✅ THÊM VÀO EXPORT
+    useNotificationUpdates  
 };

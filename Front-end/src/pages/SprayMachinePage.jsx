@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
     Container, 
-    Grid,
+    Grid, 
     CircularProgress, 
     Alert, 
     Button, 
@@ -15,23 +15,20 @@ import {
 } from '@mui/material';
 import { 
     ArrowBack, 
-    ExpandMore as ExpandMoreIcon,
-    ExpandLess as ExpandLessIcon
+    ExpandMore as ExpandMoreIcon, 
+    ExpandLess as ExpandLessIcon 
 } from '@mui/icons-material';
+
+// Import hooks
 import { useMachine } from '../hooks/useMachine';
 import { useSprayRealtime } from '../hooks/useSprayRealtime';
 import { useMachineSocketEvents } from '../hooks/useSocketEvents';
+
+// Import components
 import MachineHeader from '../components/machine/MachineHeader';
 import SprayMachinePanel from '../components/sprayMachine/SprayMachinePanel';
 import SprayMachineDataDisplay from '../components/sprayMachine/SprayMachineDataDisplay';
 
-/**
- * ========================================
- * SPRAY MACHINE PAGE COMPONENT (RESPONSIVE)
- * ========================================
- * Page chính hiển thị thông tin chi tiết Spray Machine
- * Tối ưu cho cả Desktop và Mobile
- */
 const SprayMachinePage = () => {
     const { machineId } = useParams();
     const navigate = useNavigate();
@@ -40,9 +37,10 @@ const SprayMachinePage = () => {
     const isSmallMobile = useMediaQuery(theme.breakpoints.down('sm'));
     
     const [machineRealtime, setMachineRealtime] = useState(null);
-    const [panelExpanded, setPanelExpanded] = useState(!isMobile); 
+    const [panelExpanded, setPanelExpanded] = useState(!isMobile);
 
     // ==================== FETCH MACHINE INFO ====================
+    
     const {
         machine,
         loading: machineLoading,
@@ -50,36 +48,55 @@ const SprayMachinePage = () => {
     } = useMachine(machineId);
 
     // ==================== FETCH SPRAY DATA ====================
+    
     const {
         realtimeData,
         dailyData,
         statistics,
+        pieChartData,
+        historyData,
         loading: sprayLoading,
         error: sprayError,
         isConnected,
-        todayEfficiency,
         refreshAllData,
-        refreshHistoricalData
+        refreshHistoricalData,
+        updateRealtimeFromSocket,
+        updateConnectionStatus
     } = useSprayRealtime(machineId);
 
-    // ==================== SOCKET EVENT CALLBACKS ====================
-
+    
+    /**
+     * Handle machine status update (connection, online/offline)
+     */
     const handleMachineUpdate = useCallback((update) => {
-        console.log(`[${machine?.name}] Machine status updated:`, update);
+        console.log(`📡 [${machine?.name}] Machine status update:`, update);
+        
         setMachineRealtime(prevMachine => ({
             ...prevMachine,
             ...update,
             lastUpdate: update.lastUpdate,
             lastHeartbeat: update.lastHeartbeat
         }));
-    }, [machine]);
+        
+        // ✅ Update connection status in useSprayRealtime
+        updateConnectionStatus(update.isConnected);
+    }, [machine, updateConnectionStatus]);
 
-    const handleRealtimeUpdate = useCallback((data) => {
-        console.log(`[${machine?.name}] Realtime data update:`, data);
-    }, [machine]);
+    /**
+     * Gọi updateRealtimeFromSocket thay vì fetch API
+     */
+    const handleRealtimeUpdate = useCallback((socketData) => {
+        console.log(`📡 [${machine?.name}] Realtime data update:`, socketData);
+        updateRealtimeFromSocket(socketData);
+    }, [machine, updateRealtimeFromSocket]);
 
+    /**
+     * Handle daily reset at 6AM
+     */
     const handleDailyReset = useCallback(() => {
-        console.log(`[${machine?.name}] Daily data reset at 6AM`);
+        console.log(`🌅 [${machine?.name}] Daily data reset at 6AM`);
+        
+        // Fetch lại toàn bộ data vì đã reset
         refreshAllData();
     }, [machine, refreshAllData]);
 
@@ -105,104 +122,69 @@ const SprayMachinePage = () => {
         if (realtimeData) {
             console.log('🔄 [SprayMachinePage] Realtime data updated:', {
                 status: realtimeData.sprayStatus,
-                pressure: realtimeData.pressure,
-                temperature: realtimeData.temperature
+                activeTime: realtimeData.activeTime,
+                stopTime: realtimeData.stopTime,
+                source: 'socket' 
             });
         }
     }, [realtimeData]);
 
-    // Auto collapse panel when switching to mobile
     useEffect(() => {
         setPanelExpanded(!isMobile);
     }, [isMobile]);
 
-    // ==================== RENDER LOADING STATE ====================
+    // ==================== LOADING & ERROR STATES ====================
 
     if (machineLoading || sprayLoading) {
         return (
-            <Container maxWidth="xl" sx={{ mt: { xs: 2, md: 4 }, px: { xs: 1, sm: 2 } }}>
-                <Box sx={{ 
-                    display: 'flex', 
-                    justifyContent: 'center', 
-                    alignItems: 'center', 
-                    height: { xs: '50vh', md: '60vh' },
-                    flexDirection: 'column',
-                    gap: 2
-                }}>
-                    <CircularProgress size={isSmallMobile ? 40 : 60} />
-                    <Typography 
-                        variant={isSmallMobile ? "body1" : "h6"} 
-                        color="text.secondary"
-                        textAlign="center"
-                        px={2}
-                    >
-                        Đang tải dữ liệu Spray Machine...
-                    </Typography>
-                </Box>
-            </Container>
+            <Box 
+                display="flex" 
+                justifyContent="center" 
+                alignItems="center" 
+                minHeight="100vh"
+                flexDirection="column"
+                gap={2}
+            >
+                <CircularProgress size={60} />
+                <Typography variant="h6" color="text.secondary">
+                    Đang tải dữ liệu máy...
+                </Typography>
+            </Box>
         );
     }
-
-    // ==================== RENDER ERROR STATE ====================
 
     if (machineError || sprayError) {
         return (
-            <Container maxWidth="xl" sx={{ mt: { xs: 2, md: 4 }, px: { xs: 1, sm: 2 } }}>
-                <Box sx={{ mb: 2 }}>
-                    <Button
-                        variant="outlined"
-                        startIcon={<ArrowBack />}
-                        onClick={() => navigate('/status')}
-                        size={isSmallMobile ? "small" : "medium"}
-                    >
-                        {isSmallMobile ? "Quay lại" : "Quay lại trang chủ"}
-                    </Button>
-                </Box>
-                <Alert severity="error" sx={{ mb: 2 }}>
-                    <Typography variant="body1" sx={{ fontWeight: 600, mb: 1 }}>
-                        ❌ Lỗi tải dữ liệu
-                    </Typography>
-                    <Typography variant="body2">
-                        {machineError || sprayError}
-                    </Typography>
-                </Alert>
-                <Button 
-                    variant="contained" 
-                    onClick={() => window.location.reload()}
-                    fullWidth={isSmallMobile}
-                    size={isSmallMobile ? "small" : "medium"}
+            <Container maxWidth="md" sx={{ mt: 4 }}>
+                <Alert 
+                    severity="error" 
+                    action={
+                        <Button 
+                            color="inherit" 
+                            size="small" 
+                            onClick={() => navigate('/status')}
+                        >
+                            Quay lại
+                        </Button>
+                    }
                 >
-                    Tải lại trang
-                </Button>
+                    {machineError || sprayError}
+                </Alert>
             </Container>
         );
     }
-
-    // ==================== RENDER NO MACHINE STATE ====================
 
     if (!machine) {
         return (
-            <Container maxWidth="xl" sx={{ mt: { xs: 2, md: 4 }, px: { xs: 1, sm: 2 } }}>
+            <Container maxWidth="md" sx={{ mt: 4 }}>
                 <Alert severity="warning">
-                    <Typography variant="body1">
-                        ⚠️ Không tìm thấy máy với ID: {machineId}
-                    </Typography>
+                    Không tìm thấy máy với ID: {machineId}
                 </Alert>
-                <Button 
-                    variant="contained" 
-                    onClick={() => navigate('/status')}
-                    sx={{ mt: 2 }}
-                    startIcon={<ArrowBack />}
-                    fullWidth={isSmallMobile}
-                    size={isSmallMobile ? "small" : "medium"}
-                >
-                    Quay về trang chủ
-                </Button>
             </Container>
         );
     }
 
-    // ==================== RENDER MAIN CONTENT ====================
+    // ==================== RENDER ====================
 
     return (
         <Container 
@@ -213,15 +195,14 @@ const SprayMachinePage = () => {
                 px: { xs: 1, sm: 2, md: 3 }
             }}
         >
-            {/* Header with back button */}
+            {/* Machine Header */}
             <MachineHeader machine={machine} />
 
-            {/* Main Grid Layout - Responsive */}
+            {/* Main Content Grid */}
             <Grid container spacing={{ xs: 2, sm: 2, md: 3 }}>
-                {/* Mobile: Collapsible Panel */}
                 {isMobile ? (
+                    // Mobile Layout: Collapsible panel
                     <>
-                        {/* Collapse Button */}
                         <Grid size={12}>
                             <Box
                                 sx={{
@@ -246,42 +227,42 @@ const SprayMachinePage = () => {
                             </Box>
                         </Grid>
 
-                        {/* Collapsible Machine Panel */}
                         <Grid size={12}>
                             <Collapse in={panelExpanded} timeout="auto">
-                                <SprayMachinePanel
+                                <SprayMachinePanel 
                                     machine={machineRealtime || machine}
                                     isConnected={isConnected}
                                 />
                             </Collapse>
                         </Grid>
 
-                        {/* Data Display - Always visible on mobile */}
                         <Grid size={12}>
                             <SprayMachineDataDisplay
                                 dailyData={dailyData}
                                 statistics={statistics}
+                                pieChartData={pieChartData}
+                                historyData={historyData}
                                 loading={sprayLoading}
                                 error={sprayError}
                             />
                         </Grid>
                     </>
                 ) : (
-                    /* Desktop: Side-by-side layout */
+                    // Desktop Layout: Side-by-side
                     <>
-                        {/* Left Column - Machine Info & Panel */}
-                        <Grid size={{ xs: 12, md: 4, lg: 3 }}>
-                            <SprayMachinePanel
+                        <Grid size={{ xs: 12, md: 4, lg: 2.5 }}>
+                            <SprayMachinePanel 
                                 machine={machineRealtime || machine}
                                 isConnected={isConnected}
                             />
                         </Grid>
 
-                        {/* Right Column - Data Display */}
-                        <Grid size={{ xs: 12, md: 8, lg: 9 }}>
+                        <Grid size={{ xs: 12, md: 8, lg: 9.5 }}>
                             <SprayMachineDataDisplay
                                 dailyData={dailyData}
                                 statistics={statistics}
+                                pieChartData={pieChartData}
+                                historyData={historyData}
                                 loading={sprayLoading}
                                 error={sprayError}
                             />
@@ -290,29 +271,26 @@ const SprayMachinePage = () => {
                 )}
             </Grid>
 
-            {/* Footer Info - Responsive */}
-            <Box 
-                sx={{ 
-                    mt: { xs: 3, md: 4 }, 
-                    textAlign: 'center', 
-                    py: { xs: 1.5, md: 2 }, 
-                    borderTop: '1px solid', 
-                    borderColor: 'divider',
-                    px: { xs: 1, sm: 2 }
-                }}
-            >
-                <Typography 
-                    variant={isSmallMobile ? "caption" : "body2"} 
-                    color="text.secondary" 
-                    display="block" 
-                    sx={{ mb: 0.5 }}
-                >
-                    📊 Hiệu suất hôm nay: <strong>{todayEfficiency}%</strong>
-                </Typography>
-                
-                {!isSmallMobile && (
-                    <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 0.5 }}>
-                        🔄 Dữ liệu được cập nhật tự động mỗi 5 giây
+            {/* Footer Info */}
+            <Box sx={{ mt: { xs: 2, md: 3 }, textAlign: 'center' }}>
+                {/* ✅ Socket Status Indicator */}
+                {isConnected ? (
+                    <Typography 
+                        variant="caption" 
+                        color="success.main" 
+                        display="block" 
+                        sx={{ mb: 1, fontSize: { xs: '0.7rem', sm: '0.75rem' } }}
+                    >
+                        🟢 Dữ liệu được cập nhật tự động qua Socket.IO
+                    </Typography>
+                ) : (
+                    <Typography 
+                        variant="caption" 
+                        color="error.main" 
+                        display="block" 
+                        sx={{ mb: 1, fontSize: { xs: '0.7rem', sm: '0.75rem' } }}
+                    >
+                        🔴 Máy mất kết nối - Không nhận được dữ liệu realtime
                     </Typography>
                 )}
                 
@@ -320,33 +298,32 @@ const SprayMachinePage = () => {
                     variant="caption" 
                     color="text.secondary" 
                     display="block"
-                    sx={{ 
-                        fontSize: { xs: '0.7rem', sm: '0.75rem' },
-                        wordBreak: 'break-word'
-                    }}
+                    sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' }, wordBreak: 'break-word' }}
                 >
-                    🕐 Cập nhật lần cuối: {(machineRealtime || machine)?.lastUpdate ? 
+                    🕐 Cập nhật lần cuối: {
+                        (machineRealtime || machine)?.lastUpdate ? 
                         new Date((machineRealtime || machine).lastUpdate).toLocaleString('vi-VN', {
                             dateStyle: isSmallMobile ? 'short' : 'medium',
                             timeStyle: 'short'
                         }) : 
-                        'Chưa có dữ liệu'}
+                        'Chưa có dữ liệu'
+                    }
                 </Typography>
             </Box>
 
-            {/* Quick Actions - Responsive */}
+            {/* Action Buttons */}
             <Box 
                 sx={{ 
-                    mt: { xs: 2, md: 3 }, 
-                    display: 'flex', 
+                    mt: { xs: 2, md: 3 },
+                    display: 'flex',
                     flexDirection: { xs: 'column', sm: 'row' },
-                    justifyContent: 'center', 
+                    justifyContent: 'center',
                     gap: { xs: 1.5, sm: 2 },
                     px: { xs: 1, sm: 0 }
                 }}
             >
-                <Button 
-                    variant="outlined" 
+                <Button
+                    variant="outlined"
                     onClick={refreshAllData}
                     disabled={sprayLoading}
                     fullWidth={isSmallMobile}
@@ -355,8 +332,9 @@ const SprayMachinePage = () => {
                 >
                     {isSmallMobile ? "Làm mới" : "Làm mới tất cả"}
                 </Button>
-                <Button 
-                    variant="outlined" 
+
+                <Button
+                    variant="outlined"
                     onClick={refreshHistoricalData}
                     disabled={sprayLoading}
                     fullWidth={isSmallMobile}
@@ -364,6 +342,17 @@ const SprayMachinePage = () => {
                     sx={{ minWidth: { sm: 150 } }}
                 >
                     {isSmallMobile ? "Lịch sử" : "Làm mới lịch sử"}
+                </Button>
+
+                <Button
+                    variant="outlined"
+                    onClick={() => navigate('/status')}
+                    fullWidth={isSmallMobile}
+                    size={isSmallMobile ? "small" : "medium"}
+                    startIcon={<ArrowBack />}
+                    sx={{ minWidth: { sm: 150 } }}
+                >
+                    {isSmallMobile ? "Quay lại" : "Quay về trang chủ"}
                 </Button>
             </Box>
         </Container>
