@@ -20,7 +20,7 @@ const SprayMachineDataSchema = new mongoose.Schema({
         type: Number,
         default: 0,
         min: 0,
-        max: 12
+        max: 24
     },
     
     // Thời gian máy DỪNG (status != 1, bao gồm: status=0, không nhận JSON, server đang chạy nhưng máy không phản hồi)
@@ -28,7 +28,7 @@ const SprayMachineDataSchema = new mongoose.Schema({
         type: Number,
         default: 0,
         min: 0,
-        max: 12
+        max: 24
     },
     
     // ==================== NĂNG LƯỢNG ====================
