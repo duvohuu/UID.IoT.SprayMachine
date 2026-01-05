@@ -15,15 +15,11 @@ import StatusMachinesGrid from '../components/status/StatusMachinesGrid';
 
 // Import API and hooks
 import { getMachines } from '../api/machineAPI';
-import { useSnackbar } from '../context/SnackbarContext';
-import { useSocket } from '../context/SocketContext';
 import { useAllMachinesStatusUpdates } from '../hooks/useSocketEvents';
 
 const StatusPage = ({ user }) => {
     const theme = useTheme();
     const navigate = useNavigate();
-    const { showSnackbar } = useSnackbar();
-    const { isConnected } = useSocket(); 
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
     
     // State management
@@ -135,7 +131,6 @@ const StatusPage = ({ user }) => {
                 setMachines(sortedMachines);
                 console.log("✅ Machine list refreshed - UI updated!");
             } else {
-                // Nếu không có máy nào, set empty array
                 setMachines([]);
                 console.log("✅ No machines left - UI cleared");
             }

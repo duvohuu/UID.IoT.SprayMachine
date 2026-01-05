@@ -31,7 +31,7 @@ const SprayMachinePanel = ({
     return (
         <Card>
             <CardContent>
-                <Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold', mb: 3 }}>
+                <Typography variant="h5" gutterBottom sx={{ fontWeight: 'bold', mb: 3 }}>
                     📋 Thông tin máy
                 </Typography>
 
@@ -53,21 +53,21 @@ const SprayMachinePanel = ({
 
                 {/* Tên máy */}
                 <Box sx={{ mb: 2.5 }}>
-                    <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5, display: 'block' }}>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5, display: 'block' }}>
                         Tên máy
                     </Typography>
-                    <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
+                    <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
                         {machine?.name || 'N/A'}
                     </Typography>
                 </Box>
 
                 {/* Machine ID */}
                 <Box sx={{ mb: 2.5 }}>
-                    <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5, display: 'block' }}>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5, display: 'block' }}>
                         Machine ID
                     </Typography>
                     <Typography 
-                        variant="body1" 
+                        variant="h6" 
                         sx={{ 
                             fontFamily: 'monospace', 
                             fontWeight: 'bold',
@@ -80,10 +80,10 @@ const SprayMachinePanel = ({
 
                 {/* Chủ sở hữu */}
                 <Box sx={{ mb: 2.5 }}>
-                    <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5, display: 'block' }}>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5, display: 'block' }}>
                         Chủ sở hữu
                     </Typography>
-                    <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
+                    <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
                         {machine?.userId || 'N/A'}
                     </Typography>
                 </Box>
@@ -94,7 +94,7 @@ const SprayMachinePanel = ({
                 <Box>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
                         <TimeIcon sx={{ fontSize: 20, color: 'primary.main' }} />
-                        <Typography variant="caption" color="text.secondary">
+                        <Typography variant="body2" color="text.secondary">
                             Ca làm việc
                         </Typography>
                     </Box>
@@ -107,7 +107,7 @@ const SprayMachinePanel = ({
                             width: '100%'
                         }}
                     />
-                    <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block', textAlign: 'center' }}>
+                    <Typography variant="body2" color="text.secondary" sx={{ mt: 1, display: 'block', textAlign: 'center' }}>
                         12 giờ/ngày
                     </Typography>
                 </Box>

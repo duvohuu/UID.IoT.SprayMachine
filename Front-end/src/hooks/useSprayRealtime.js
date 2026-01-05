@@ -7,6 +7,14 @@ import {
     getSprayPieChartData 
 } from '../api/sprayMachineAPI';
 
+/**
+ * ========================================
+ * IMPROVED: Socket-driven realtime hook
+ * ========================================
+ * - Fetch data lần đầu từ API
+ * - Update data từ socket events (không polling)
+ * - Expose update functions để SprayMachinePage gọi
+ */
 export const useSprayRealtime = (machineId) => {
     const [realtimeData, setRealtimeData] = useState(null);
     const [dailyData, setDailyData] = useState(null);
@@ -17,7 +25,8 @@ export const useSprayRealtime = (machineId) => {
     const [error, setError] = useState(null);
     const [isConnected, setIsConnected] = useState(false);
 
-    // ==================== FETCH REALTIME DATA ====================
+    // ==================== FETCH FUNCTIONS (API calls) ====================
+    
     const fetchRealtimeData = useCallback(async () => {
         if (!machineId) return;
         
@@ -25,7 +34,7 @@ export const useSprayRealtime = (machineId) => {
             const result = await getSprayRealtimeData(machineId);
             
             if (result.success && result.data) {
-                console.log('✅ [useSprayRealtime] Realtime data:', result.data);
+                console.log('✅ [useSprayRealtime] Realtime data from API:', result.data);
                 setRealtimeData(result.data);
                 setIsConnected(result.data.isConnected || false);
                 setError(null);
@@ -40,7 +49,6 @@ export const useSprayRealtime = (machineId) => {
         }
     }, [machineId]);
 
-    // ==================== FETCH DAILY DATA ====================
     const fetchDailyData = useCallback(async () => {
         if (!machineId) return;
         
@@ -48,7 +56,7 @@ export const useSprayRealtime = (machineId) => {
             const result = await getSprayDailyData(machineId);
             
             if (result.success && result.data) {
-                console.log('✅ [useSprayRealtime] Daily data:', result.data);
+                console.log('✅ [useSprayRealtime] Daily data from API:', result.data);
                 setDailyData(result.data);
                 setError(null);
             } else {
@@ -61,7 +69,6 @@ export const useSprayRealtime = (machineId) => {
         }
     }, [machineId]);
 
-    // ==================== FETCH PIE CHART DATA ====================
     const fetchPieChartData = useCallback(async () => {
         if (!machineId) return;
         
@@ -69,7 +76,7 @@ export const useSprayRealtime = (machineId) => {
             const result = await getSprayPieChartData(machineId);
             
             if (result.success && result.data) {
-                console.log('✅ [useSprayRealtime] Pie chart data:', result.data);
+                console.log('✅ [useSprayRealtime] Pie chart data from API:', result.data);
                 setPieChartData(result.data);
                 setError(null);
             } else {
@@ -82,7 +89,6 @@ export const useSprayRealtime = (machineId) => {
         }
     }, [machineId]);
 
-    // ==================== FETCH STATISTICS ====================
     const fetchStatistics = useCallback(async () => {
         if (!machineId) return;
         
@@ -90,7 +96,7 @@ export const useSprayRealtime = (machineId) => {
             const result = await getSprayStatistics(machineId);
             
             if (result.success && result.data) {
-                console.log('✅ [useSprayRealtime] Statistics:', result.data);
+                console.log('✅ [useSprayRealtime] Statistics from API:', result.data);
                 setStatistics(result.data);
                 setError(null);
             } else {
@@ -103,7 +109,6 @@ export const useSprayRealtime = (machineId) => {
         }
     }, [machineId]);
 
-    // ==================== FETCH HISTORY DATA ====================
     const fetchHistoryData = useCallback(async () => {
         if (!machineId) return;
         
@@ -111,7 +116,7 @@ export const useSprayRealtime = (machineId) => {
             const result = await getSpray30DaysHistory(machineId);
             
             if (result.success && result.data) {
-                console.log('✅ [useSprayRealtime] History data:', result.data);
+                console.log('✅ [useSprayRealtime] History data from API:', result.data);
                 setHistoryData(result.data);
                 setError(null);
             } else {
@@ -124,13 +129,14 @@ export const useSprayRealtime = (machineId) => {
         }
     }, [machineId]);
 
-    // ==================== FETCH ALL DATA ====================
+    // ==================== FETCH ALL DATA (Initial load) ====================
+    
     const fetchAllData = useCallback(async () => {
         setLoading(true);
         setError(null);
         
         try {
-            console.log(`🔄 [useSprayRealtime] Fetching all data for: ${machineId}`);
+            console.log(`🔄 [useSprayRealtime] Initial fetch all data for: ${machineId}`);
             
             await Promise.all([
                 fetchRealtimeData(),
@@ -148,8 +154,74 @@ export const useSprayRealtime = (machineId) => {
             setLoading(false);
         }
     }, [machineId, fetchRealtimeData, fetchDailyData, fetchPieChartData, fetchStatistics, fetchHistoryData]);
+    
+    /**
+     * Update realtime data from socket event
+     * Called by SprayMachinePage when socket emits 'spray:data-update'
+     */
+    const updateRealtimeFromSocket = useCallback((socketData) => {
+        console.log('📡 [useSprayRealtime] Update from socket:', socketData);
+        
+        if (!socketData) return;
+        
+        // Update realtime data
+        setRealtimeData(prev => ({
+            ...prev,
+            activeTime: socketData.activeTime ?? prev?.activeTime,
+            stopTime: socketData.stopTime ?? prev?.stopTime,
+            energyConsumption: socketData.totalEnergyConsumed ?? prev?.energyConsumption,
+            sprayStatus: socketData.status ?? prev?.sprayStatus,
+            powerConsumption: socketData.powerConsumption ?? prev?.powerConsumption,
+            lastUpdate: socketData.lastUpdate ?? new Date().toISOString(),
+            isConnected: true
+        }));
+        
+        // Update daily data
+        setDailyData(prev => {
+            if (!prev) return prev;
+            
+            const updatedActiveTime = socketData.activeTime ?? prev.operatingTime;
+            const updatedStopTime = socketData.stopTime ?? prev.pausedTime;
+            const totalTime = updatedActiveTime + updatedStopTime;
+            const efficiency = totalTime > 0 ? ((updatedActiveTime / totalTime) * 100).toFixed(1) : 0;
+            
+            return {
+                ...prev,
+                operatingTime: updatedActiveTime,
+                pausedTime: updatedStopTime,
+                energyConsumption: socketData.totalEnergyConsumed ?? prev.energyConsumption,
+                efficiency: parseFloat(efficiency)
+            };
+        });
+        
+        // Update pie chart data
+        setPieChartData(prev => ({
+            ...prev,
+            operatingTime: socketData.activeTime ?? prev?.operatingTime,
+            pausedTime: socketData.stopTime ?? prev?.pausedTime
+        }));
+        
+        // Update connection status
+        setIsConnected(true);
+        setError(null);
+        
+        console.log('✅ [useSprayRealtime] State updated from socket');
+    }, []);
 
-    // ==================== REFRESH FUNCTIONS ====================
+    /**
+     * Update machine connection status from socket
+     */
+    const updateConnectionStatus = useCallback((status) => {
+        console.log('📡 [useSprayRealtime] Connection status:', status);
+        setIsConnected(status);
+        
+        if (!status) {
+            setError('Máy mất kết nối');
+        }
+    }, []);
+
+    // ==================== REFRESH FUNCTIONS (Manual) ====================
+    
     const refreshAllData = useCallback(() => {
         console.log('🔄 [useSprayRealtime] Manual refresh all data');
         fetchAllData();
@@ -161,7 +233,8 @@ export const useSprayRealtime = (machineId) => {
         fetchHistoryData();
     }, [fetchStatistics, fetchHistoryData]);
 
-    // ==================== INITIAL LOAD ====================
+    // ==================== INITIAL LOAD (Only once) ====================
+    
     useEffect(() => {
         if (machineId) {
             console.log(`🚀 [useSprayRealtime] Initial load for: ${machineId}`);
@@ -173,37 +246,31 @@ export const useSprayRealtime = (machineId) => {
         }
     }, [machineId, fetchAllData]);
 
-    // ==================== AUTO REFRESH REALTIME ====================
-    useEffect(() => {
-        if (!machineId) return;
-
-        console.log('⏰ [useSprayRealtime] Setting up auto-refresh (5s interval)');
-        const interval = setInterval(() => {
-            fetchRealtimeData();
-            fetchDailyData();
-            fetchPieChartData();
-        }, 5000);
-
-        return () => {
-            console.log('🛑 [useSprayRealtime] Cleaning up auto-refresh');
-            clearInterval(interval);
-        };
-    }, [machineId, fetchRealtimeData, fetchDailyData, fetchPieChartData]);
-
     // ==================== CALCULATE TODAY EFFICIENCY ====================
+    
     const todayEfficiency = dailyData ? dailyData.efficiency || 0 : 0;
 
+    // ==================== RETURN ====================
+    
     return {
+        // Data
         realtimeData,
         dailyData,
         statistics,
         pieChartData,
         historyData,
+        
+        // Status
         loading,
         error,
         isConnected,
         todayEfficiency,
+        
+        // Manual refresh functions
         refreshAllData,
-        refreshHistoricalData
+        refreshHistoricalData,
+        
+        updateRealtimeFromSocket,
+        updateConnectionStatus
     };
 };

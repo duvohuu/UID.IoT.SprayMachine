@@ -6,8 +6,6 @@ import Header from './components/header/Header';
 import Sidebar from './components/layout/Sidebar';
 import StatusPage from './pages/StatusPage';
 import SettingPage from './pages/SettingPage';
-import CNCMachinePage from './pages/CNCMachinePage';
-import PowderMachinePage from './pages/PowderMachinePage';
 import SprayMachinePage from './pages/SprayMachinePage'; 
 import { SnackbarProvider } from './context/SnackbarContext';
 import { SocketProvider } from './context/SocketContext';
@@ -103,8 +101,6 @@ const App = () => {
                                 <Route path="/" element={<Navigate to="/status" replace />} />
                                 <Route path="/status" element={<StatusPage user={user} />} />
                                 <Route path="/setting" element={<SettingPage user={user} mode={mode} setMode={setMode} />} />
-                                <Route path="/powder/:machineId" element={<PowderMachinePage user={user} />} />
-                                <Route path="/cnc/:machineId" element={<CNCMachinePage user={user} />} />
                                 <Route path="/spray/:machineId" element={<SprayMachinePage user={user} />} />
                             </Routes>
                         </Box>

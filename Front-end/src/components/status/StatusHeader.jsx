@@ -1,11 +1,56 @@
 import React from 'react';
 import { Box, Typography, Alert, Fade, Chip } from '@mui/material';
-import { useTheme } from '@mui/material/styles';
+import { useTheme, styled, alpha } from '@mui/material/styles';
 import { 
     MonitorHeart as StatusIcon,
     AdminPanelSettings as AdminIcon,
-    Person as UserIcon 
+    Person as UserIcon,
+    Link as PartnershipIcon 
 } from '@mui/icons-material';
+
+const nohieLeatherLogo = '/Ngoc_Hiep.png';
+const ssbLogo = '/SSB_Logo.png';
+
+const LogoContainer = styled(Box)(({ theme }) => ({
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: theme.spacing(3),
+    marginBottom: theme.spacing(3),
+    transition: "all 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
+    transform: 'translateX(15px)',
+    [theme.breakpoints.down('sm')]: {
+        gap: theme.spacing(2),
+        marginBottom: theme.spacing(2),
+    }
+}));
+
+const PartnershipBadge = styled(Box)(({ theme }) => ({
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    color: theme.palette.primary.main,
+    transition: "all 0.3s ease",
+    position: 'relative',
+    "&::before": {
+        content: '""',
+        position: 'absolute',
+        inset: -8,
+        borderRadius: '50%',
+        background: `radial-gradient(circle, ${alpha(theme.palette.primary.main, 0.15)} 0%, transparent 70%)`,
+        opacity: 0,
+        transition: 'opacity 0.3s ease',
+        zIndex: -1,
+    },
+    "&:hover": {
+        transform: 'scale(1.2) rotate(-45deg)',
+        color: theme.palette.secondary.main,
+        filter: `drop-shadow(0 4px 12px ${alpha(theme.palette.primary.main, 0.4)})`,
+        "&::before": {
+            opacity: 1,
+        }
+    },
+}));
 
 const StatusHeader = ({ isMobile, error, user }) => {
     const theme = useTheme();
@@ -15,7 +60,66 @@ const StatusHeader = ({ isMobile, error, user }) => {
         <Box sx={{ mb: 4 }}>
             <Fade in={true} timeout={800}>
                 <Box sx={{ textAlign: 'center', mb: 4 }}>
-                    {/* Header với icon giống Setting page */}
+                    <Fade in={true} timeout={600}>
+                        <LogoContainer>
+                            {/* Nohie Leather Logo */}
+                            <Box
+                                component="img"
+                                src={nohieLeatherLogo}
+                                alt="Nohie Leather"
+                                sx={{
+                                    height: { xs: 60, sm: 75, md: 85 }, 
+                                    width: 'auto',
+                                    objectFit: 'contain',
+                                    marginRight: { xs: 0.5, sm: 0.75 }, 
+                                    filter: theme.palette.mode === 'dark'
+                                        ? "brightness(0.95) drop-shadow(0 4px 16px rgba(255,255,255,0.15))"
+                                        : "drop-shadow(0 4px 16px rgba(0,0,0,0.12))",
+                                    transition: "all 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
+                                    "&:hover": {
+                                        filter: theme.palette.mode === 'dark'
+                                            ? "brightness(1.05) drop-shadow(0 6px 24px rgba(255,255,255,0.2))"
+                                            : "drop-shadow(0 6px 24px rgba(0,0,0,0.18)) brightness(1.05)",
+                                        transform: "translateY(-3px) scale(1.05)"
+                                    }
+                                }}
+                            />
+
+                            <PartnershipBadge>
+                                <PartnershipIcon 
+                                    sx={{ 
+                                        fontSize: { xs: 28, sm: 32, md: 36 },
+                                        transform: 'rotate(-45deg)', 
+                                    }} 
+                                />
+                            </PartnershipBadge>
+
+                            {/* SSB Logo */}
+                            <Box
+                                component="img"
+                                src={ssbLogo}
+                                alt="SSB"
+                                sx={{
+                                    height: { xs: 42, sm: 52, md: 58 },
+                                    width: 'auto',
+                                    objectFit: 'contain',
+                                    marginLeft: { xs: -0.5, sm: -0.5 }, 
+                                    filter: theme.palette.mode === 'dark'
+                                        ? "brightness(0.95) drop-shadow(0 4px 14px rgba(255,255,255,0.12))"
+                                        : "drop-shadow(0 4px 14px rgba(0,0,0,0.1))",
+                                    transition: "all 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
+                                    "&:hover": {
+                                        filter: theme.palette.mode === 'dark'
+                                            ? "brightness(1.05) drop-shadow(0 6px 20px rgba(255,255,255,0.18))"
+                                            : "drop-shadow(0 6px 20px rgba(0,0,0,0.15)) brightness(1.05)",
+                                        transform: "translateY(-3px) scale(1.05)"
+                                    }
+                                }}
+                            />
+                        </LogoContainer>
+                    </Fade>
+
+                    {/* Header với icon */}
                     <Box sx={{ 
                         display: 'flex', 
                         alignItems: 'center', 
@@ -23,22 +127,6 @@ const StatusHeader = ({ isMobile, error, user }) => {
                         gap: 2,
                         mb: 2
                     }}>
-                        <Box
-                            sx={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                width: 48,
-                                height: 48,
-                                borderRadius: '50%',
-                                background: `linear-gradient(135deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
-                                color: '#fff',
-                                boxShadow: `0 4px 20px ${theme.palette.primary.main}40`,
-                            }}
-                        >
-                            <StatusIcon sx={{ fontSize: 24 }} />
-                        </Box>
-                        
                         <Typography 
                             variant={isMobile ? "h4" : "h3"} 
                             component="h1"
@@ -54,8 +142,8 @@ const StatusHeader = ({ isMobile, error, user }) => {
                             {isAdmin ? 'Quản Lý Hệ Thống' : 'Trạng Thái Máy Móc'}
                         </Typography>
                     </Box>
-                    
-                    {/* ✅ User Role và Welcome Message */}
+
+                    {/* User Role và Welcome Message */}
                     {user && (
                         <Box sx={{ mb: 2, display: 'flex', justifyContent: 'center', gap: 2, flexWrap: 'wrap' }}>
                             <Chip

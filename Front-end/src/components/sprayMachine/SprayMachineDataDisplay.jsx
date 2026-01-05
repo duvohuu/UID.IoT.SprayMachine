@@ -159,7 +159,7 @@ const SprayMachineDataDisplay = ({ dailyData, statistics, loading, error }) => {
             {/* ==================== BIỂU ĐỒ TRÒN ==================== */}
             <Card sx={{ mb: 3 }}>
                 <CardContent>
-                    <Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold', mb: 3 }}>
+                    <Typography variant="h5" gutterBottom sx={{ fontWeight: 'bold', mb: 3 }}>
                         📊 Thời gian hoạt động hôm nay ({formatDate(dailyData.date)})
                     </Typography>
                     <Box sx={{ height: 300, position: 'relative' }}>
@@ -175,7 +175,7 @@ const SprayMachineDataDisplay = ({ dailyData, statistics, loading, error }) => {
             </Card>
 
             {/* ==================== THỐNG KÊ HÔM NAY ==================== */}
-            <Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold', mb: 2 }}>
+            <Typography variant="h5" gutterBottom sx={{ fontWeight: 'bold', mb: 2 }}>
                 📅 Thống kê hôm nay
             </Typography>
             <Grid container spacing={2} sx={{ mb: 3 }}>
@@ -190,7 +190,7 @@ const SprayMachineDataDisplay = ({ dailyData, statistics, loading, error }) => {
             </Grid>
 
             {/* ==================== THỐNG KÊ 30 NGÀY ==================== */}
-            <Typography variant="h6" gutterBottom sx={{ fontWeight: 'bold', mb: 2 }}>
+            <Typography variant="h5" gutterBottom sx={{ fontWeight: 'bold', mb: 2 }}>
                 📈 Thống kê 30 ngày gần nhất
             </Typography>
             <Grid container spacing={2}>
