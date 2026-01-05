@@ -133,34 +133,22 @@ export const getSprayPieChartData = async (machineId) => {
 };
 
 /**
- * Export dữ liệu CSV cho Spray Machine
+ * Lấy dữ liệu tuần hiện tại (T2-CN)
  * @param {string} machineId - ID của máy
- * @param {Object} params - Query parameters
- * @param {string} params.startDate - Ngày bắt đầu (YYYY-MM-DD)
- * @param {string} params.endDate - Ngày kết thúc (YYYY-MM-DD)
  * @returns {Promise<{success: boolean, data?: any, message?: string}>}
  */
-export const exportSprayDataCSV = async (machineId, params = {}) => {
+export const getSprayWeeklyData = async (machineId) => {
     try {
-        const queryParams = new URLSearchParams({
-            startDate: params.startDate || '',
-            endDate: params.endDate || '',
-            ...params
-        });
-
         const response = await axios.get(
-            `${API_URL}/api/spray-machine/export/${machineId}?${queryParams}`, 
-            { 
-                withCredentials: true,
-                responseType: 'blob' // Important for file download
-            }
+            `${API_URL}/api/spray-machine/weekly/${machineId}`, 
+            { withCredentials: true }
         );
         return { success: true, data: response.data };
     } catch (err) {
-        console.error('❌ Error exporting spray data:', err);
+        console.error('❌ Error fetching spray weekly data:', err);
         return { 
             success: false, 
-            message: err.response?.data?.message || "Lỗi export dữ liệu CSV" 
+            message: err.response?.data?.message || "Lỗi lấy dữ liệu tuần Spray Machine" 
         };
     }
 };
@@ -175,6 +163,6 @@ export default {
     getSprayDailyData,
     getSpray30DaysHistory,
     getSprayStatistics,
+    getSprayWeeklyData,
     getSprayPieChartData,
-    exportSprayDataCSV
 };

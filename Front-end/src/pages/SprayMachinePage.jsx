@@ -26,6 +26,7 @@ import { useMachineSocketEvents } from '../hooks/useSocketEvents';
 
 // Import components
 import MachineHeader from '../components/machine/MachineHeader';
+import MachineFooter from '../components/machine/MachineFooter';
 import SprayMachinePanel from '../components/sprayMachine/SprayMachinePanel';
 import SprayMachineDataDisplay from '../components/sprayMachine/SprayMachineDataDisplay';
 
@@ -34,7 +35,6 @@ const SprayMachinePage = () => {
     const navigate = useNavigate();
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('md'));
-    const isSmallMobile = useMediaQuery(theme.breakpoints.down('sm'));
     
     const [machineRealtime, setMachineRealtime] = useState(null);
     const [panelExpanded, setPanelExpanded] = useState(!isMobile);
@@ -55,11 +55,11 @@ const SprayMachinePage = () => {
         statistics,
         pieChartData,
         historyData,
+        weeklyData,
         loading: sprayLoading,
         error: sprayError,
         isConnected,
         refreshAllData,
-        refreshHistoricalData,
         updateRealtimeFromSocket,
         updateConnectionStatus
     } = useSprayRealtime(machineId);
@@ -242,6 +242,7 @@ const SprayMachinePage = () => {
                                 statistics={statistics}
                                 pieChartData={pieChartData}
                                 historyData={historyData}
+                                weeklyData={weeklyData}
                                 loading={sprayLoading}
                                 error={sprayError}
                             />
@@ -263,6 +264,7 @@ const SprayMachinePage = () => {
                                 statistics={statistics}
                                 pieChartData={pieChartData}
                                 historyData={historyData}
+                                weeklyData={weeklyData}
                                 loading={sprayLoading}
                                 error={sprayError}
                             />
@@ -270,82 +272,17 @@ const SprayMachinePage = () => {
                     </>
                 )}
             </Grid>
-
-            {/* Footer Info */}
-            <Box sx={{ mt: { xs: 2, md: 3 }, textAlign: 'center' }}>
-                {/* ✅ Socket Status Indicator */}
-                {isConnected ? (
-                    <Typography 
-                        variant="caption" 
-                        color="success.main" 
-                        display="block" 
-                        sx={{ mb: 1, fontSize: { xs: '0.7rem', sm: '0.75rem' } }}
-                    >
-                        🟢 Dữ liệu được cập nhật tự động qua Socket.IO
-                    </Typography>
-                ) : (
-                    <Typography 
-                        variant="caption" 
-                        color="error.main" 
-                        display="block" 
-                        sx={{ mb: 1, fontSize: { xs: '0.7rem', sm: '0.75rem' } }}
-                    >
-                        🔴 Máy mất kết nối - Không nhận được dữ liệu realtime
-                    </Typography>
-                )}
-                
-                <Typography 
-                    variant="caption" 
-                    color="text.secondary" 
-                    display="block"
-                    sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' }, wordBreak: 'break-word' }}
-                >
-                    🕐 Cập nhật lần cuối: {
-                        (machineRealtime || machine)?.lastUpdate ? 
-                        new Date((machineRealtime || machine).lastUpdate).toLocaleString('vi-VN', {
-                            dateStyle: isSmallMobile ? 'short' : 'medium',
-                            timeStyle: 'short'
-                        }) : 
-                        'Chưa có dữ liệu'
-                    }
-                </Typography>
-            </Box>
-
-            {/* Action Buttons */}
             <Box 
                 sx={{ 
-                    mt: { xs: 2, md: 3 },
-                    display: 'flex',
-                    flexDirection: { xs: 'column', sm: 'row' },
-                    justifyContent: 'center',
-                    gap: { xs: 1.5, sm: 2 },
-                    px: { xs: 1, sm: 0 }
+                    display: 'flex', 
+                    justifyContent: 'center', 
+                    mt: 3 
                 }}
             >
-                <Button
-                    variant="outlined"
-                    onClick={refreshAllData}
-                    disabled={sprayLoading}
-                    fullWidth={isSmallMobile}
-                    size={isSmallMobile ? "small" : "medium"}
-                    sx={{ minWidth: { sm: 150 } }}
-                >
-                    {isSmallMobile ? "Làm mới" : "Làm mới tất cả"}
-                </Button>
-
-                <Button
-                    variant="outlined"
-                    onClick={refreshHistoricalData}
-                    disabled={sprayLoading}
-                    fullWidth={isSmallMobile}
-                    size={isSmallMobile ? "small" : "medium"}
-                    sx={{ minWidth: { sm: 150 } }}
-                >
-                    {isSmallMobile ? "Lịch sử" : "Làm mới lịch sử"}
-                </Button>
+                <MachineFooter machine={machine} />
             </Box>
         </Container>
     );
-};
+}
 
 export default SprayMachinePage;

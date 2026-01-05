@@ -6,7 +6,7 @@ import { getIO } from '../config/socket.js';
 const WORK_HOURS_PER_DAY = 12; 
 const WORK_START_HOUR = 6;    
 const WORK_START_MINUTE = 0;   
-const WORK_END_HOUR = 20;     
+const WORK_END_HOUR = 18;     
 const WORK_END_MINUTE = 0;     
 /**
  * Lấy date string theo timezone Việt Nam (UTC+7)
