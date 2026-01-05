@@ -55,13 +55,12 @@ export const getSprayDailyData = async (req, res) => {
         
         const data = await SprayMachineService.getLatestData(machineId);
         
-        // ✅ FIX: Lấy trực tiếp từ DB, KHÔNG dùng getCurrentActiveTime/getCurrentStopTime
         const efficiency = (data.activeTime / 12) * 100;
         
         const dailyData = {
             date: data.date,
-            operatingTime: parseFloat(data.activeTime.toFixed(2)),       // ← Lấy từ DB
-            pausedTime: parseFloat(data.stopTime.toFixed(2)),            // ← Lấy từ DB
+            operatingTime: parseFloat(data.activeTime.toFixed(2)),       
+            pausedTime: parseFloat(data.stopTime.toFixed(2)),            
             totalPaintUsed: 0,
             productCount: 0,
             energyConsumption: parseFloat(data.totalEnergyConsumed.toFixed(3)),
@@ -98,7 +97,6 @@ export const getSpray30DaysHistory = async (req, res) => {
         
         const history = await SprayMachineService.get30DaysHistory(machineId);
         
-        // ✅ FIX: Lấy trực tiếp từ DB
         const formattedHistory = history.map(day => ({
             date: day.date,
             operatingTime: parseFloat(day.activeTime.toFixed(2)),        // ← Lấy từ DB
@@ -114,6 +112,36 @@ export const getSpray30DaysHistory = async (req, res) => {
         res.status(500).json({ 
             success: false,
             message: 'Error fetching spray history', 
+            error: error.message 
+        });
+    }
+};
+
+/**
+ * GET /api/spray-machine/weekly/:machineId
+ */
+export const getSprayWeeklyData = async (req, res) => {
+    try {
+        const { machineId } = req.params;
+        console.log(`📊 [Controller] GET Weekly data for: ${machineId}`);
+        
+        const weeklyData = await SprayMachineService.getCurrentWeekData(machineId);
+        
+        const formattedData = weeklyData.map(day => ({
+            date: day.date,
+            dayOfWeek: day.dayOfWeek, 
+            operatingTime: parseFloat(day.activeTime.toFixed(2)),
+            pausedTime: parseFloat(day.stopTime.toFixed(2)),
+            energyConsumption: parseFloat(day.totalEnergyConsumed.toFixed(3))
+        }));
+        
+        res.json(formattedData);
+        
+    } catch (error) {
+        console.error('❌ [Controller] Weekly Error:', error);
+        res.status(500).json({ 
+            success: false,
+            message: 'Error fetching spray weekly data', 
             error: error.message 
         });
     }
@@ -159,7 +187,6 @@ export const getSprayPieChartData = async (req, res) => {
         
         const data = await SprayMachineService.getLatestData(machineId);
         
-        // ✅ FIX: Lấy trực tiếp từ DB
         const pieChartData = {
             operatingTime: parseFloat(data.activeTime.toFixed(2)),       // ← Lấy từ DB
             pausedTime: parseFloat(data.stopTime.toFixed(2)),            // ← Lấy từ DB

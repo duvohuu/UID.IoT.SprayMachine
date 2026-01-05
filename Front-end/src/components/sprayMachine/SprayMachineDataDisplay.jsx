@@ -8,18 +8,30 @@ import {
     CircularProgress, 
     Alert 
 } from '@mui/material';
-import { Pie } from 'react-chartjs-2';
+import { Pie, Bar } from 'react-chartjs-2';
 import { 
     Chart as ChartJS, 
-    ArcElement, 
+    ArcElement,
+    CategoryScale,
+    LinearScale,
+    BarElement,
+    Title,
     Tooltip, 
     Legend 
 } from 'chart.js';
 import { dailyStats, monthlyStats } from '../../config/sprayMachineConfig';
 
-ChartJS.register(ArcElement, Tooltip, Legend);
+ChartJS.register(
+    ArcElement, 
+    CategoryScale,
+    LinearScale,
+    BarElement,
+    Title,
+    Tooltip, 
+    Legend
+);
 
-const SprayMachineDataDisplay = ({ dailyData, statistics, loading, error }) => {
+const SprayMachineDataDisplay = ({ dailyData, statistics, weeklyData, loading, error }) => {
 
     // ==================== STAT CARD COMPONENT ====================
     const StatCard = ({ config, value }) => {
@@ -154,6 +166,80 @@ const SprayMachineDataDisplay = ({ dailyData, statistics, loading, error }) => {
         }
     };
 
+    // ==================== BAR CHART DATA (TUẦN HIỆN TẠI) ====================
+    const getWeekRange = () => {
+        if (!weeklyData || weeklyData.length === 0) return '';
+        const firstDate = new Date(weeklyData[0].date + 'T00:00:00Z');
+        const lastDate = new Date(weeklyData[weeklyData.length - 1].date + 'T00:00:00Z');
+        return `${firstDate.getUTCDate()}/${firstDate.getUTCMonth() + 1} - ${lastDate.getUTCDate()}/${lastDate.getUTCMonth() + 1}`;
+    };
+
+    const barData = weeklyData && weeklyData.length > 0 ? {
+        labels: weeklyData.map(day => {
+            const dateObj = new Date(day.date + 'T00:00:00Z');
+            const dateStr = `${dateObj.getUTCDate()}/${dateObj.getUTCMonth() + 1}`;
+            return `${day.dayOfWeek}\n${dateStr}`;
+        }),
+        datasets: [
+            {
+                label: 'Thời gian chạy',
+                data: weeklyData.map(day => day.operatingTime || 0), 
+                backgroundColor: 'rgba(76, 175, 80, 0.2)',
+                borderColor: '#4caf50',
+                borderWidth: 2
+            },
+            {
+                label: 'Thời gian dừng',
+                data: weeklyData.map(day => day.pausedTime || 0), 
+                backgroundColor: 'rgba(255, 152, 0, 0.2)',
+                borderColor: '#ff9800',
+                borderWidth: 2
+            }
+        ]
+    } : null;
+
+
+    const barOptions = {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                display: true,
+                position: 'top',
+                labels: {
+                    font: { size: 14 },
+                    padding: 15
+                }
+            },
+            tooltip: {
+                callbacks: {
+                    label: (context) => {
+                        return `${context.dataset.label}: ${context.parsed.y.toFixed(2)} giờ`;
+                    }
+                }
+            }
+        },
+        scales: {
+            y: {
+                beginAtZero: true,
+                max: 12,
+                title: {
+                    display: true,
+                    text: 'Giờ'
+                },
+                ticks: {
+                    stepSize: 2
+                }
+            },
+            x: {
+                title: {
+                    display: true,
+                    text: 'Ngày trong tuần'
+                }
+            }
+        }
+    };
+
     return (
         <Box>
             {/* ==================== BIỂU ĐỒ TRÒN ==================== */}
@@ -171,6 +257,33 @@ const SprayMachineDataDisplay = ({ dailyData, statistics, loading, error }) => {
                             {' '}({dailyData.operatingTime || 0}h / 12h)
                         </Typography>
                     </Box>
+                </CardContent>
+            </Card>
+
+            {/* ==================== BIỂU ĐỒ CỘT (TUẦN HIỆN TẠI) ==================== */}
+            <Card sx={{ mb: 3 }}>
+                <CardContent>
+                    <Typography variant="h5" gutterBottom sx={{ fontWeight: 'bold', mb: 1 }}>
+                        📊 Thời gian hoạt động tuần này {getWeekRange()}
+                    </Typography>
+                    {barData ? (
+                        <>
+                            <Box sx={{ height: 400, position: 'relative' }}>
+                                <Bar data={barData} options={barOptions} />
+                            </Box>
+                            <Box sx={{ mt: 2, p: 2, bgcolor: 'background.default', borderRadius: 1 }}>
+                                <Typography variant="body2" color="text.secondary" align="center">
+                                    💡 Mỗi cột thể hiện thời gian hoạt động và dừng trong ngày (tối đa 12h/ngày)
+                                </Typography>
+                            </Box>
+                        </>
+                    ) : (
+                        <Box sx={{ textAlign: 'center', py: 4 }}>
+                            <Typography variant="body2" color="text.secondary">
+                                Chưa có dữ liệu tuần này
+                            </Typography>
+                        </Box>
+                    )}
                 </CardContent>
             </Card>
 

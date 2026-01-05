@@ -110,3 +110,61 @@ export const workShiftConfig = {
     totalHours: 12,
     displayText: '6:00 - 18:00'
 };
+
+/**
+ * Config cho biểu đồ cột tuần hiện tại
+ */
+export const weeklyBarChartConfig = {
+    colors: {
+        operating: '#4caf50',
+        paused: '#ff9800',
+        background: 'rgba(76, 175, 80, 0.2)',
+        pausedBackground: 'rgba(255, 152, 0, 0.2)',
+        borderColor: '#4caf50',
+        pausedBorderColor: '#ff9800'
+    },
+    labels: {
+        operating: 'Thời gian chạy',
+        paused: 'Thời gian dừng'
+    },
+    chartOptions: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                display: true,
+                position: 'top',
+                labels: {
+                    font: { size: 14 },
+                    padding: 15
+                }
+            },
+            tooltip: {
+                callbacks: {
+                    label: (context) => {
+                        return `${context.dataset.label}: ${context.parsed.y.toFixed(2)} giờ`;
+                    }
+                }
+            }
+        },
+        scales: {
+            y: {
+                beginAtZero: true,
+                max: 12,
+                title: {
+                    display: true,
+                    text: 'Giờ'
+                },
+                ticks: {
+                    stepSize: 2
+                }
+            },
+            x: {
+                title: {
+                    display: true,
+                    text: 'Ngày trong tuần'
+                }
+            }
+        }
+    }
+};

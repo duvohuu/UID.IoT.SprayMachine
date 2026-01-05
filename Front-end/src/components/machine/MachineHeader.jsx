@@ -3,7 +3,7 @@ import { Box, Button, Typography, Chip } from '@mui/material';
 import { ArrowBack } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 
-const MachineHeader = ({ machine }) => {
+const MachineHeader = () => {
     const navigate = useNavigate();
 
     return (

@@ -135,88 +135,63 @@ export const getLatestData = async (machineId) => {
 export const processMQTTUpdate = async (machineId, mqttData) => {
     try {
         const { status, powerConsumption } = mqttData;
-        const now = new Date();
+        const now = getVietnamTime();
         
-        // ✅ KIỂM TRA CA LÀM VIỆC
+        // ==================== KIỂM TRA CA LÀM VIỆC ====================
         if (!isWithinWorkShift()) {
-            const vnTime = getVietnamTime();
-            const currentTime = `${vnTime.getUTCHours().toString().padStart(2, '0')}:${vnTime.getUTCMinutes().toString().padStart(2, '0')}`;
-            console.log(`⏰ [Service] Outside work shift (${currentTime}). Work shift: ${formatWorkShift()}. Ignoring MQTT for ${machineId}`);
+            console.log(`⏰ [Service] Outside work shift. Ignoring update.`);
             return null;
         }
         
-        console.log(`[Service] Processing MQTT for ${machineId}:`, { 
-            status, 
-            powerConsumption,
-            timestamp: now.toISOString()
-        });
+        // ==================== LẤY/TẠO DATA ====================
+        const data = await getLatestData(machineId);
         
-        // Validate powerConsumption
-        if (typeof powerConsumption !== 'number' || powerConsumption < 0) {
-            throw new Error('Invalid powerConsumption value. Must be >= 0');
-        }
-        
-        let data = await getLatestData(machineId);
-        
-        // ==================== XỬ LÝ NĂNG LƯỢNG ====================
-        
+        // ==================== CẬP NHẬT NĂNG LƯỢNG ====================
+        const energyConsumed = powerConsumption - data.energyAtStartOfDay;
+        data.totalEnergyConsumed = Math.max(0, energyConsumed);
         data.currentPowerConsumption = powerConsumption;
         
-        if (data.energyAtStartOfDay > 0) {
-            data.totalEnergyConsumed = Math.max(0, powerConsumption - data.energyAtStartOfDay);
-        } else if (powerConsumption > 0) {
-            data.energyAtStartOfDay = powerConsumption;
-            data.totalEnergyConsumed = 0;
-            console.log(`[Service] Set initial energyAtStartOfDay = ${powerConsumption} kWh`);
-        }
+        console.log(`⚡ [Service] Energy: start=${data.energyAtStartOfDay.toFixed(3)}kWh, current=${powerConsumption.toFixed(3)}kWh, consumed=${data.totalEnergyConsumed.toFixed(3)}kWh`);
         
-        console.log(`[Service] Energy: start=${data.energyAtStartOfDay.toFixed(3)}, current=${powerConsumption.toFixed(3)}, consumed=${data.totalEnergyConsumed.toFixed(3)} kWh`);
-        
-        // ==================== XỬ LÝ ACTIVE/STOP TIME ====================
+        // ==================== CẬP NHẬT THỜI GIAN ====================
         
         const previousStatus = data.lastStatus;
         const currentStatus = (typeof status === 'number' && status === 1) ? 1 : 0;
-        const statusChanged = previousStatus !== currentStatus;
         const timeSinceLastChange = now - new Date(data.lastStatusChangeTime);
         const hoursSinceLastChange = timeSinceLastChange / (1000 * 60 * 60);
         
-        console.log(`[Service] Status: previous=${previousStatus}, current=${currentStatus}, changed=${statusChanged}`);
+        console.log(`[Service] Status: previous=${previousStatus}, current=${currentStatus}`);
+        console.log(`[Service] Time since last change: ${hoursSinceLastChange.toFixed(3)}h`);
         
-        // Chỉ cập nhật nếu đã qua ít nhất 1 giây
-        if (statusChanged && timeSinceLastChange > 1000) {
+        if (timeSinceLastChange > 1000) { // Chỉ cập nhật nếu > 1 giây
+            
             if (previousStatus === 1) {
-                // Máy đang chạy → dừng
+                // Trước đó máy ĐANG CHẠY → cộng vào activeTime
                 data.activeTime += hoursSinceLastChange;
                 data.activeTime = Math.min(data.activeTime, WORK_HOURS_PER_DAY);
-                console.log(`▶️ [Service] Was running. Added ${hoursSinceLastChange.toFixed(3)}h to activeTime. Total: ${data.activeTime.toFixed(2)}h`);
+                console.log(`▶️ [Service] Added ${hoursSinceLastChange.toFixed(3)}h to activeTime. Total: ${data.activeTime.toFixed(2)}h`);
             } else {
-                // Máy đang dừng → chạy
+                // Trước đó máy ĐANG DỪNG → cộng vào stopTime
                 data.stopTime += hoursSinceLastChange;
                 data.stopTime = Math.min(data.stopTime, WORK_HOURS_PER_DAY);
-                console.log(`⏸️ [Service] Was stopped. Added ${hoursSinceLastChange.toFixed(3)}h to stopTime. Total: ${data.stopTime.toFixed(2)}h`);
+                console.log(`⏸️ [Service] Added ${hoursSinceLastChange.toFixed(3)}h to stopTime. Total: ${data.stopTime.toFixed(2)}h`);
             }
             
+            // Cập nhật timestamp và status
             data.lastStatusChangeTime = now;
             data.lastStatus = currentStatus;
             
-            if (currentStatus === 1) {
-                console.log(`🟢 [Service] Machine started running at ${now.toISOString()}`);
-            } else {
-                console.log(`🔴 [Service] Machine stopped at ${now.toISOString()}`);
+            // Log status change nếu có
+            if (previousStatus !== currentStatus) {
+                if (currentStatus === 1) {
+                    console.log(`🟢 [Service] Machine STARTED running at ${now.toISOString()}`);
+                } else {
+                    console.log(`🔴 [Service] Machine STOPPED at ${now.toISOString()}`);
+                }
             }
-        } else if (statusChanged && timeSinceLastChange <= 1000) {
-            console.log(`⚠️ [Service] Status changed too quickly (${timeSinceLastChange}ms), only updating status`);
-            data.lastStatusChangeTime = now;
-            data.lastStatus = currentStatus;
+            
         } else {
-            // Status không đổi
-            if (currentStatus === 1) {
-                const currentRunTime = data.activeTime + Math.max(0, hoursSinceLastChange);
-                console.log(`🏃 [Service] Still running. Base: ${data.activeTime.toFixed(2)}h + Current: ${Math.max(0, hoursSinceLastChange).toFixed(3)}h = ${currentRunTime.toFixed(2)}h`);
-            } else {
-                const currentStopTime = data.stopTime + Math.max(0, hoursSinceLastChange);
-                console.log(`⏹️ [Service] Still stopped. Base: ${data.stopTime.toFixed(2)}h + Current: ${Math.max(0, hoursSinceLastChange).toFixed(3)}h = ${currentStopTime.toFixed(2)}h`);
-            }
+            console.log(`⚠️ [Service] Update too fast (${timeSinceLastChange}ms), skipping time calculation`);
         }
         
         // ==================== CẬP NHẬT METADATA ====================
@@ -456,4 +431,83 @@ export const initializeDailyResetScheduler = () => {
 export const testDailyReset = async () => {
     console.log('🧪 [Test] Running manual reset...\n');
     await resetAllSprayMachines();
+};
+
+/**
+ * ========================================
+ * WEEKLY DATA 
+ * =======================================
+ */
+
+ const getMondayOfWeek = (dateString) => {
+    const date = new Date(dateString + 'T00:00:00Z');
+    const day = date.getUTCDay(); // 0 = CN, 1 = T2, ..., 6 = T7
+    const diff = day === 0 ? -6 : 1 - day; // Nếu CN thì lùi 6 ngày
+    
+    const monday = new Date(date);
+    monday.setUTCDate(date.getUTCDate() + diff);
+    
+    return monday.toISOString().split('T')[0];
+};
+
+/**
+ * Chuyển đổi ngày thành tên thứ trong tuần
+ */
+const getDayOfWeekName = (dateString) => {
+    const date = new Date(dateString + 'T00:00:00Z');
+    const day = date.getUTCDay();
+    const days = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
+    return days[day];
+};
+
+/**
+ * Lấy dữ liệu tuần hiện tại (T2-CN)
+ */
+export const getCurrentWeekData = async (machineId) => {
+    try {
+        const today = getVietnamDateString();
+        const monday = getMondayOfWeek(today);
+        
+        console.log(`📅 [Service] Current week: Monday = ${monday}, Today = ${today}`);
+        
+        // Tạo mảng 7 ngày từ T2 đến CN
+        const weekDates = [];
+        for (let i = 0; i < 7; i++) {
+            const date = new Date(monday + 'T00:00:00Z');
+            date.setUTCDate(date.getUTCDate() + i);
+            weekDates.push(date.toISOString().split('T')[0]);
+        }
+        
+        console.log(`📋 [Service] Week dates:`, weekDates);
+        
+        // Lấy dữ liệu từ DB
+        const weekData = await SprayMachineData
+            .find({ 
+                machineId,
+                date: { $in: weekDates }
+            })
+            .sort({ date: 1 })
+            .lean();
+        
+        // Map với tên thứ
+        const result = weekDates.map(date => {
+            const existingData = weekData.find(d => d.date === date);
+            
+            return {
+                date,
+                dayOfWeek: getDayOfWeekName(date),
+                activeTime: existingData?.activeTime || 0,
+                stopTime: existingData?.stopTime || 0,
+                totalEnergyConsumed: existingData?.totalEnergyConsumed || 0
+            };
+        });
+        
+        console.log(`✅ [Service] Week data prepared:`, result.length, 'days');
+        
+        return result;
+        
+    } catch (error) {
+        console.error(`❌ [Service] Error getting week data for ${machineId}:`, error);
+        throw error;
+    }
 };

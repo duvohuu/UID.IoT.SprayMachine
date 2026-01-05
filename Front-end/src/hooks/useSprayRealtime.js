@@ -4,7 +4,8 @@ import {
     getSprayDailyData, 
     getSprayStatistics, 
     getSpray30DaysHistory,
-    getSprayPieChartData 
+    getSprayPieChartData,
+    getSprayWeeklyData
 } from '../api/sprayMachineAPI';
 
 /**
@@ -21,12 +22,31 @@ export const useSprayRealtime = (machineId) => {
     const [statistics, setStatistics] = useState(null);
     const [pieChartData, setPieChartData] = useState(null);
     const [historyData, setHistoryData] = useState([]);
+    const [weeklyData, setWeeklyData] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [isConnected, setIsConnected] = useState(false);
 
     // ==================== FETCH FUNCTIONS (API calls) ====================
     
+    const fetchWeeklyData = useCallback(async () => {
+        if (!machineId) return;
+        
+        try {
+            const result = await getSprayWeeklyData(machineId);
+            
+            if (result.success && result.data) {
+                console.log('✅ [useSprayRealtime] Weekly data from API:', result.data);
+                setWeeklyData(result.data);
+                setError(null);
+            } else {
+                console.error('❌ [useSprayRealtime] Weekly data failed:', result.message);
+            }
+        } catch (err) {
+            console.error('❌ [useSprayRealtime] Weekly data error:', err);
+        }
+    }, [machineId]);
+
     const fetchRealtimeData = useCallback(async () => {
         if (!machineId) return;
         
@@ -143,7 +163,8 @@ export const useSprayRealtime = (machineId) => {
                 fetchDailyData(),
                 fetchPieChartData(),
                 fetchStatistics(),
-                fetchHistoryData()
+                fetchHistoryData(),
+                fetchWeeklyData()
             ]);
             
             console.log('✅ [useSprayRealtime] All data loaded successfully');
@@ -153,7 +174,7 @@ export const useSprayRealtime = (machineId) => {
         } finally {
             setLoading(false);
         }
-    }, [machineId, fetchRealtimeData, fetchDailyData, fetchPieChartData, fetchStatistics, fetchHistoryData]);
+    }, [machineId, fetchRealtimeData, fetchDailyData, fetchPieChartData, fetchStatistics, fetchHistoryData, fetchWeeklyData]);
     
     /**
      * Update realtime data from socket event
@@ -200,6 +221,31 @@ export const useSprayRealtime = (machineId) => {
             operatingTime: socketData.activeTime ?? prev?.operatingTime,
             pausedTime: socketData.stopTime ?? prev?.pausedTime
         }));
+
+        setWeeklyData(prev => {
+        if (!prev || prev.length === 0) return prev;
+        
+        const today = socketData.date; // Format: "2026-01-05"
+        
+        return prev.map(day => {
+            if (day.date === today) {
+                console.log(`📊 [useSprayRealtime] Updating weekly data for ${today}:`, {
+                    oldOperatingTime: day.operatingTime,
+                    newOperatingTime: socketData.activeTime,
+                    oldPausedTime: day.pausedTime,
+                    newPausedTime: socketData.stopTime
+                });
+                
+                return {
+                    ...day,
+                    operatingTime: socketData.activeTime ?? day.operatingTime,
+                    pausedTime: socketData.stopTime ?? day.pausedTime,
+                    energyConsumption: socketData.totalEnergyConsumed ?? day.energyConsumption
+                };
+            }
+            return day;
+        });
+    });
         
         // Update connection status
         setIsConnected(true);
@@ -231,7 +277,8 @@ export const useSprayRealtime = (machineId) => {
         console.log('🔄 [useSprayRealtime] Manual refresh historical data');
         fetchStatistics();
         fetchHistoryData();
-    }, [fetchStatistics, fetchHistoryData]);
+        fetchWeeklyData(); 
+    }, [fetchStatistics, fetchHistoryData, fetchWeeklyData]);
 
     // ==================== INITIAL LOAD (Only once) ====================
     
@@ -259,6 +306,7 @@ export const useSprayRealtime = (machineId) => {
         statistics,
         pieChartData,
         historyData,
+        weeklyData,
         
         // Status
         loading,

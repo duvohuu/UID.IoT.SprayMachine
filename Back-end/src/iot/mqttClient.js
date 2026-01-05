@@ -105,18 +105,23 @@ export const initializeMQTT = () => {
                     machineId: updatedData.machineId,
                     date: updatedData.date,
                     status: updatedData.lastStatus,
-                    activeTime: updatedData.activeTime.toFixed(2),
-                    stopTime: updatedData.stopTime.toFixed(2),
-                    totalEnergyConsumed: updatedData.totalEnergyConsumed.toFixed(3),
-                    currentPowerConsumption: updatedData.currentPowerConsumption.toFixed(3),
+                    activeTime: parseFloat(updatedData.activeTime.toFixed(2)),
+                    stopTime: parseFloat(updatedData.stopTime.toFixed(2)),
+                    totalEnergyConsumed: parseFloat(updatedData.totalEnergyConsumed.toFixed(3)),
+                    powerConsumption: parseFloat(updatedData.currentPowerConsumption.toFixed(3)),
                     lastUpdate: updatedData.lastUpdate
                 };
 
-                // Emit to specific machine room
-                io.to(`machine-${machineId}`).emit('spray:data-update', responseData);
+                io.emit('spray:realtime', responseData);
                 
-                // Emit to all spray machines room
-                io.to('spray-machines').emit('spray:data-update', responseData);
+                io.to(`machine-${machineId}`).emit('spray:realtime', responseData);
+                
+                io.emit('machine:status-update', {
+                    machineId: machineId,
+                    status: updatedData.lastStatus === 1 ? 'running' : 'idle',
+                    isConnected: true,
+                    lastUpdate: updatedData.lastUpdate
+                });
                 
                 // console.log(`📤 [Socket] Emitted update for ${machineId}`);
 
