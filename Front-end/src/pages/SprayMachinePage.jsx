@@ -40,7 +40,7 @@ const SprayMachinePage = () => {
     const isSmallMobile = useMediaQuery(theme.breakpoints.down('sm'));
     
     const [machineRealtime, setMachineRealtime] = useState(null);
-    const [panelExpanded, setPanelExpanded] = useState(!isMobile); // Mobile: collapsed by default
+    const [panelExpanded, setPanelExpanded] = useState(!isMobile); 
 
     // ==================== FETCH MACHINE INFO ====================
     const {
@@ -270,7 +270,7 @@ const SprayMachinePage = () => {
                     /* Desktop: Side-by-side layout */
                     <>
                         {/* Left Column - Machine Info & Panel */}
-                        <Grid size={{ xs: 12, md: 4, lg: 3.5 }}>
+                        <Grid size={{ xs: 12, md: 4, lg: 3 }}>
                             <SprayMachinePanel
                                 machine={machineRealtime || machine}
                                 isConnected={isConnected}
@@ -278,7 +278,7 @@ const SprayMachinePage = () => {
                         </Grid>
 
                         {/* Right Column - Data Display */}
-                        <Grid size={{ xs: 12, md: 8, lg: 8.5 }}>
+                        <Grid size={{ xs: 12, md: 8, lg: 9 }}>
                             <SprayMachineDataDisplay
                                 dailyData={dailyData}
                                 statistics={statistics}
