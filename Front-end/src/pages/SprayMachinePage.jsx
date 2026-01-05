@@ -343,17 +343,6 @@ const SprayMachinePage = () => {
                 >
                     {isSmallMobile ? "Lịch sử" : "Làm mới lịch sử"}
                 </Button>
-
-                <Button
-                    variant="outlined"
-                    onClick={() => navigate('/status')}
-                    fullWidth={isSmallMobile}
-                    size={isSmallMobile ? "small" : "medium"}
-                    startIcon={<ArrowBack />}
-                    sx={{ minWidth: { sm: 150 } }}
-                >
-                    {isSmallMobile ? "Quay lại" : "Quay về trang chủ"}
-                </Button>
             </Box>
         </Container>
     );
