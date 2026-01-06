@@ -42,26 +42,19 @@ import {
 const MachineStatusCard = ({ machine, user, onClick, onDelete }) => {
     const theme = useTheme();
     const isConnected = machine.isConnected;
-    const isOnline = machine.status === 'online' && isConnected;
     const isAdmin = user?.role === 'admin';
     
     let statusColor, statusText, statusIcon, statusBgColor, primaryStatusIcon;
     
-    if (isConnected && isOnline) {
+    if (machine.status == 'online') {
         statusColor = 'success';
         statusText = 'Đang hoạt động';
         statusIcon = <CircleIcon sx={{ fontSize: 12 }} />;
         statusBgColor = theme.palette.success.main;
         primaryStatusIcon = <PlayIcon />;
-    } else if (isConnected && !isOnline) {
-        statusColor = 'warning';
-        statusText = 'Kết nối - Dừng';
-        statusIcon = <CircleIcon sx={{ fontSize: 12 }} />;
-        statusBgColor = theme.palette.warning.main;
-        primaryStatusIcon = <PauseIcon />;
-    } else {
+    }  else {
         statusColor = 'error';
-        statusText = 'Mất kết nối';
+        statusText = 'Đang dừng';
         statusIcon = <DisconnectedIcon sx={{ fontSize: 12 }} />;
         statusBgColor = theme.palette.error.main;
         primaryStatusIcon = <ErrorIcon />;
@@ -247,11 +240,20 @@ const MachineStatusCard = ({ machine, user, onClick, onDelete }) => {
                                     justifyContent: 'center',
                                     color: 'white',
                                     boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
-                                    animation: isConnected ? 'pulse 3s infinite' : 'none',
+                                    animation: isConnected ? 'pulse 2s ease-in-out infinite' : 'none',
                                     '@keyframes pulse': {
-                                        '0%': { boxShadow: '0 8px 24px rgba(0,0,0,0.15)' },
-                                        '50%': { boxShadow: `0 8px 32px ${theme.palette.primary.main}40` },
-                                        '100%': { boxShadow: '0 8px 24px rgba(0,0,0,0.15)' },
+                                        '0%': { 
+                                            boxShadow: `0 8px 24px rgba(0,0,0,0.15)`,
+                                            transform: 'scale(1)',
+                                        },
+                                        '50%': { 
+                                            boxShadow: `0 12px 40px ${theme.palette.primary.main}80, 0 0 20px ${theme.palette.primary.main}40`,
+                                            transform: 'scale(1.05)',  
+                                        },
+                                        '100%': { 
+                                            boxShadow: `0 8px 24px rgba(0,0,0,0.15)`,
+                                            transform: 'scale(1)',
+                                        },
                                     }
                                 }}
                             >
@@ -358,73 +360,6 @@ const MachineStatusCard = ({ machine, user, onClick, onDelete }) => {
                             </Box>
                         </Box>
 
-                    {/* MACHINE OWNER SECTION */}
-                    {/* <Box sx={{ 
-                        mb: 1.5, 
-                        p: 1.5,
-                        background: `linear-gradient(135deg, ${theme.palette.success.main}08, ${theme.palette.success.main}04)`,
-                        borderRadius: 3, 
-                        border: `1px solid ${theme.palette.success.main}25`,
-                        position: 'relative',
-                        overflow: 'hidden',
-                        '&::before': {
-                            content: '""',
-                            position: 'absolute',
-                            top: 0,
-                            left: 0,
-                            width: '100%',
-                            height: 2,
-                            background: `linear-gradient(90deg, ${theme.palette.success.main}, transparent)`,
-                        }
-                    }}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                            <Box
-                                sx={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    width: 45,
-                                    height: 45,
-                                    borderRadius: 2,
-                                    background: `linear-gradient(135deg, ${theme.palette.success.main}20, ${theme.palette.success.main}10)`,
-                                    color: theme.palette.success.main,
-                                    border: `1px solid ${theme.palette.success.main}30`,
-                                }}
-                            >
-                                <AccountIcon fontSize="medium" />
-                            </Box>
-                            
-                            <Box sx={{ flexGrow: 1, minWidth: 0 }}>
-                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
-                                    <VerifiedUserIcon sx={{ fontSize: 14, color: theme.palette.success.main }} />
-                                    <Typography
-                                        variant="caption"
-                                        sx={{
-                                            color: theme.palette.success.main,
-                                            fontWeight: 600,
-                                            fontSize: '0.8rem',
-                                        }}
-                                    >
-                                        Chủ sở hữu máy
-                                    </Typography>
-                                </Box>
-                                 */}
-                                {/* Owner UserID */}
-                                {/* <Typography
-                                    variant="body2"
-                                    sx={{
-                                        fontFamily: 'monospace',
-                                        fontSize: '0.95rem',
-                                        fontWeight: 700,
-                                        color: theme.palette.success.main,
-                                        wordBreak: 'break-all'
-                                    }}
-                                >
-                                    {machine.userId || 'Chưa xác định chủ sở hữu'}
-                                </Typography>
-                            </Box>
-                        </Box>
-                    </Box> */}
 
                     {/* ENHANCED CONNECTION STATUS */}
                     <Box sx={{ 

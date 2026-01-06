@@ -3,10 +3,10 @@ import Machine from '../models/Machine.model.js';
 import cron from 'node-cron';
 import { getIO } from '../config/socket.js';
 
-const WORK_HOURS_PER_DAY = 12; 
+const WORK_HOURS_PER_DAY = 16; 
 const WORK_START_HOUR = 6;    
 const WORK_START_MINUTE = 0;   
-const WORK_END_HOUR = 18;     
+const WORK_END_HOUR = 22;     
 const WORK_END_MINUTE = 0;     
 
 /**
@@ -342,15 +342,30 @@ export const verifyMachine = async (machineId) => {
 /**
  * Update machine connection status
  */
-export const updateMachineConnectionStatus = async (machineId, isConnected) => {
-    await Machine.findOneAndUpdate(
-        { machineId },
-        { 
+export const updateMachineConnectionStatus = async (machineId, isConnected, machineStatus = null) => {
+    try {
+        const updateData = {
             isConnected,
-            lastHeartbeat: new Date(),
-            status: isConnected ? 'online' : 'offline'
+            lastHeartbeat: new Date()
+        };
+        
+        if (machineStatus) {
+            updateData.status = machineStatus; 
+        } else {
+            // Fallback
+            updateData.status = isConnected ? 'online' : 'offline';
         }
-    );
+                
+        const result = await Machine.findOneAndUpdate(
+            { machineId },
+            updateData,
+            { new: true, runValidators: true }  
+        );
+        return result;
+    } catch (error) {
+        console.error(`❌ [Service] Error updating Machine ${machineId}:`, error);
+        throw error;
+    }
 };
 
 /**
@@ -502,9 +517,7 @@ export const getCurrentWeekData = async (machineId) => {
                 totalEnergyConsumed: existingData?.totalEnergyConsumed || 0  
             };
         });
-        
-        console.log(`✅ [Service] Week data prepared:`, result.length, 'days');
-        
+                
         return result;
         
     } catch (error) {

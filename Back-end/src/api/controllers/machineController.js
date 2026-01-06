@@ -25,11 +25,11 @@ export const getMachines = async (req, res) => {
             .select('-__v')
             .sort({ createdAt: -1 });
 
-        console.log(`📋 Returning ${machines.length} machines`);
-        if (machines.length > 0) {
-            console.log(`   Sample machine _id: ${machines[0]._id}`);
-            console.log(`   Sample machine machineId: ${machines[0].machineId}`);
-        }
+        // console.log(`📋 Returning ${machines.length} machines`);
+        // if (machines.length > 0) {
+        //     console.log(`   Sample machine _id: ${machines[0]._id}`);
+        //     console.log(`   Sample machine machineId: ${machines[0].machineId}`);
+        // }
 
         res.json({
             success: true,

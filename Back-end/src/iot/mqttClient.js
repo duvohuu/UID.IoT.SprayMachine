@@ -4,6 +4,7 @@ import { getIO } from '../config/socket.js';
 import {
     verifyMachine,
     processMQTTUpdate,
+    updateMachineConnectionStatus 
 } from '../services/sprayMachineService.js';
 
 /**
@@ -84,7 +85,7 @@ export const initializeMQTT = () => {
             // Verify machine exists
             await verifyMachine(machineId);
 
-            // Process MQTT update
+            // Process MQTT update (lưu vào SprayMachineData)
             const updatedData = await processMQTTUpdate(machineId, {
                 status,
                 powerConsumption
@@ -97,14 +98,20 @@ export const initializeMQTT = () => {
 
             console.log(`✅ [MQTT] Data processed successfully for ${machineId}`);
 
-            // Emit real-time update via Socket.IO
+            // ==================== ✅ CẬP NHẬT MACHINE MODEL ====================
+            const machineStatus = status === 1 ? 'online' : 'offline';
+            await updateMachineConnectionStatus(machineId, true, machineStatus);
+            console.log(`💾 [MQTT] Updated Machine model: status=${machineStatus}, isConnected=true`);
+
+            // ==================== EMIT SOCKET ====================
             try {
                 const io = getIO();
-                
+                const isConnected = true; 
+            
                 const responseData = {
                     machineId: updatedData.machineId,
                     date: updatedData.date,
-                    status: updatedData.lastStatus,
+                    status: updatedData.lastStatus,  
                     activeTime: parseFloat(updatedData.activeTime.toFixed(2)),
                     stopTime: parseFloat(updatedData.stopTime.toFixed(2)),
                     totalEnergyConsumed: parseFloat(updatedData.totalEnergyConsumed.toFixed(3)),
@@ -113,17 +120,23 @@ export const initializeMQTT = () => {
                 };
 
                 io.emit('spray:realtime', responseData);
-                
                 io.to(`machine-${machineId}`).emit('spray:realtime', responseData);
                 
                 io.emit('machine:status-update', {
                     machineId: machineId,
-                    status: updatedData.lastStatus === 1 ? 'running' : 'idle',
-                    isConnected: true,
-                    lastUpdate: updatedData.lastUpdate
+                    status: machineStatus,           
+                    isConnected: isConnected,        
+                    lastStatus: status,              
+                    lastUpdate: updatedData.lastUpdate,
+                    lastHeartbeat: new Date()
                 });
                 
-                // console.log(`📤 [Socket] Emitted update for ${machineId}`);
+                console.log(`📤 [Socket] Emitted status update:`, {
+                    machineId,
+                    status: machineStatus,
+                    isConnected,
+                    lastStatus: status
+                });
 
             } catch (socketError) {
                 console.error(`⚠️  [Socket] Error emitting update: ${socketError.message}`);

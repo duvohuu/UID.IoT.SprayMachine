@@ -49,9 +49,14 @@ const StatusPage = ({ user }) => {
             
             if (result.success && machines.length > 0) {
                 console.log("Machines loaded from API:", machines.length);
-                console.log("Sample machine object:", machines[0]);
-                console.log("Sample machine _id:", machines[0]?._id);
-                console.log("Sample machine id:", machines[0]?.id);
+                
+                machines.forEach(m => {
+                    console.log(`   Machine ${m.machineId}:`, {
+                        status: m.status,          // 'online' hoặc 'offline' từ Machine model
+                        isConnected: m.isConnected, // true/false từ Machine model
+                        lastUpdate: m.lastUpdate
+                    });
+                });
                 
                 const sortedMachines = sortMachinesByMachineId(machines);
                 setMachines(sortedMachines);
@@ -75,14 +80,19 @@ const StatusPage = ({ user }) => {
 
     // Handle machine status updates from socket
     const handleMachineStatusUpdate = useCallback((update) => {
-        console.log('📡 Machine status update from mainServer:', update);
+        console.log('📡 Machine status update from socket:', update);
+        console.log('   Status:', update.status);          
+        console.log('   isConnected:', update.isConnected); 
+        console.log('   lastStatus:', update.lastStatus);   
         
         setMachines((prevMachines) =>
             prevMachines.map((machine) =>
-                machine.ip === update.ip || machine.id === update.id
+                machine.machineId === update.machineId  
                     ? {
                         ...machine,
-                        ...update,
+                        status: update.status,              
+                        isConnected: update.isConnected,   
+                        lastStatus: update.lastStatus,       
                         lastUpdate: update.lastUpdate,
                         lastHeartbeat: update.lastHeartbeat
                     }
