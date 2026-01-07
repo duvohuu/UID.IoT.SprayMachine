@@ -52,8 +52,8 @@ const StatusPage = ({ user }) => {
                 
                 machines.forEach(m => {
                     console.log(`   Machine ${m.machineId}:`, {
-                        status: m.status,          // 'online' hoặc 'offline' từ Machine model
-                        isConnected: m.isConnected, // true/false từ Machine model
+                        status: m.status,         
+                        isConnected: m.isConnected, 
                         lastUpdate: m.lastUpdate
                     });
                 });
@@ -122,7 +122,6 @@ const StatusPage = ({ user }) => {
         } else if (machine.type === 'Salt Filling Machine') {
             navigate(`/salt/${machine.machineId}`);
         } else {
-            // Fallback cho các loại máy khác
             navigate(`/machine/${machine.machineId}`);
         }
     };

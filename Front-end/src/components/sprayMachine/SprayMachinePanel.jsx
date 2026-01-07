@@ -8,9 +8,11 @@ import {
     Divider
 } from '@mui/material';
 import { 
-    Wifi as WifiIcon,
-    WifiOff as WifiOffIcon,
-    AccessTime as TimeIcon
+    Circle as CircleIcon,
+    AccessTime as TimeIcon,
+    PlayArrow as PlayIcon,
+    Pause as PauseIcon,
+    PowerSettingsNew as IdleIcon
 } from '@mui/icons-material';
 
 /**
@@ -21,12 +23,39 @@ import {
  * - Tên máy
  * - ID máy
  * - Chủ sở hữu
+ * - Trạng thái hoạt động (online/offline/idle)
  * - Ca làm việc (6h-18h)
  */
-const SprayMachinePanel = ({ 
-    machine,
-    isConnected
-}) => {
+const SprayMachinePanel = ({ machine }) => {
+    
+    // ==================== STATUS LOGIC (DỰA VÀO machine.status) ====================
+    
+    const machineStatus = machine?.status; // 'online' | 'offline' | 'idle'
+    
+    let statusColor, statusText, statusIcon;
+    
+    // Xét theo machine.status
+    switch (machineStatus) {
+        case 'online':
+            statusColor = 'success';
+            statusText = 'Đang hoạt động';
+            statusIcon = <PlayIcon sx={{ fontSize: 16 }} />;
+            break;
+        case 'offline':
+            statusColor = 'error';
+            statusText = 'Đang dừng';
+            statusIcon = <PauseIcon sx={{ fontSize: 16 }} />;
+            break;
+        case 'idle':
+            statusColor = 'warning';
+            statusText = 'Chờ';
+            statusIcon = <IdleIcon sx={{ fontSize: 16 }} />;
+            break;
+        default:
+            statusColor = 'default';
+            statusText = 'Không xác định';
+            statusIcon = <CircleIcon sx={{ fontSize: 16 }} />;
+    }
 
     return (
         <Card>
@@ -35,22 +64,38 @@ const SprayMachinePanel = ({
                     📋 Thông tin máy
                 </Typography>
 
-                {/* Trạng thái kết nối */}
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 3 }}>
-                    {isConnected ? (
-                        <WifiIcon sx={{ color: 'success.main' }} />
-                    ) : (
-                        <WifiOffIcon sx={{ color: 'error.main' }} />
-                    )}
-                    <Chip
-                        label={isConnected ? 'Đã kết nối' : 'Mất kết nối'}
-                        color={isConnected ? 'success' : 'error'}
-                        size="small"
-                    />
+                {/* ==================== TRẠNG THÁI HOẠT ĐỘNG ==================== */}
+                <Box sx={{ mb: 3 }}>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 1, display: 'block' }}>
+                        Trạng thái hoạt động
+                    </Typography>
+                    
+                    <Box sx={{ 
+                        display: 'flex', 
+                        flexDirection: 'column',
+                        gap: 1.5 
+                    }}>
+                        {/* Status Chip - Dựa vào machine.status */}
+                        <Chip
+                            icon={statusIcon}
+                            label={statusText}
+                            color={statusColor}
+                            sx={{ 
+                                fontWeight: 600,
+                                fontSize: '0.9rem',
+                                height: 36,
+                                '& .MuiChip-icon': {
+                                    fontSize: 18
+                                }
+                            }}
+                        />
+                    </Box>
                 </Box>
 
                 <Divider sx={{ mb: 3 }} />
 
+                {/* ==================== THÔNG TIN MÁY ==================== */}
+                
                 {/* Tên máy */}
                 <Box sx={{ mb: 2.5 }}>
                     <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5, display: 'block' }}>
@@ -90,7 +135,8 @@ const SprayMachinePanel = ({
 
                 <Divider sx={{ my: 3 }} />
 
-                {/* Ca làm việc */}
+                {/* ==================== CA LÀM VIỆC ==================== */}
+                
                 <Box>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
                         <TimeIcon sx={{ fontSize: 20, color: 'primary.main' }} />

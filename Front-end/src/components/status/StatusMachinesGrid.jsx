@@ -41,32 +41,27 @@ const StatusMachinesGrid = ({ machines, loading, user, onMachineClick, onMachine
             console.log('   MongoDB id (no underscore):', machineToDelete.id);
             console.log('   Machine Name:', machineToDelete.name);
             
-            // ✅ Get the correct ID (try _id first, then id, then machineId)
             const idToDelete = machineToDelete._id || machineToDelete.id || machineToDelete.machineId;
             
             if (!idToDelete) {
-                console.error('❌ No valid ID found on machine object!');
+                console.error('No valid ID found on machine object!');
                 showSnackbar('Lỗi: Không tìm thấy ID của máy', 'error');
                 return;
             }
             
             console.log('   Using ID for deletion:', idToDelete);
             
-            // ✅ XÓA TRONG DATABASE - Gửi request DELETE tới backend
             const result = await deleteMachine(idToDelete);
             
             if (result.success) {
-                console.log('✅ Machine DELETED from DATABASE successfully!');
+                console.log('Machine DELETED from DATABASE successfully!');
                 console.log('   Response:', result.data);
                 showSnackbar(`Đã xóa máy ${machineToDelete.machineId || machineToDelete.name} khỏi database`, 'success');
                 
-                // ✅ CẬP NHẬT GIAO DIỆN - Refresh danh sách máy
                 if (onMachineDelete) {
                     console.log('   Calling onMachineDelete to refresh UI...');
-                    // ✅ Đợi một chút để đảm bảo database đã sync
                     await new Promise(resolve => setTimeout(resolve, 100));
                     await onMachineDelete(machineToDelete);
-                    console.log('   ✅ UI refresh completed!');
                 }
             } else {
                 console.error('❌ Failed to delete from database:', result.message);
@@ -99,7 +94,7 @@ const StatusMachinesGrid = ({ machines, loading, user, onMachineClick, onMachine
                 >
                     Danh Sách Máy Móc
                 </Typography>
-                <Grid container spacing={2}> {/* Giảm spacing */}
+                <Grid container spacing={2}> 
                     {Array.from({ length: 4 }).map((_, index) => ( // 4 skeleton thay vì 3
                         <Grid item xs={12} sm={6} md={3} lg={3} xl={3} key={index}> {/* md={3} cho 4 cột */}
                             <Card sx={{ height: user?.role === 'admin' ? 380 : 320, p: 2 }}>
@@ -132,7 +127,6 @@ const StatusMachinesGrid = ({ machines, loading, user, onMachineClick, onMachine
             }
         </Typography>
         
-        {/* Sử dụng CSS Grid thay vì Material-UI Grid */}
         <Box
             sx={{
                 display: 'grid',

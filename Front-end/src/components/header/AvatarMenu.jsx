@@ -252,16 +252,24 @@ const AvatarMenu = ({ anchorEl, onClose, user, setUser, onLogout }) => {
         try {
             const res = await axios.put(
                 `${API_URL}/api/users/change-password`,
-                { oldPassword, newPassword },
+                { 
+                    currentPassword: oldPassword,  
+                    newPassword: newPassword 
+                },
                 { withCredentials: true }
             );
-            showSnackbar(res.data.message, "success");
+            showSnackbar(res.data.message || "Đổi mật khẩu thành công", "success");
             setOpenChangePassword(false);
             setOldPassword("");
             setNewPassword("");
         } catch (error) {
             console.error("Lỗi khi đổi mật khẩu:", error);
-            showSnackbar(error.response?.data?.message || "Lỗi khi đổi mật khẩu", "error");
+            
+            const errorMessage = error.response?.data?.message 
+                || error.response?.data?.error 
+                || "Lỗi khi đổi mật khẩu";
+                
+            showSnackbar(errorMessage, "error");
         }
     };
 

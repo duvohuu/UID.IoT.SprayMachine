@@ -1,0 +1,15 @@
+export const WORK_SHIFT = {
+    HOURS_PER_DAY: 17,
+    START_HOUR: 6,
+    START_MINUTE: 0,
+    END_HOUR: 23,
+    END_MINUTE: 0,
+    DAYS_PER_WEEK: 7  
+};
+
+export const TIME_CONFIG = {
+    VIETNAM_TIMEZONE_OFFSET: 7,
+    TIMEZONE_MS: 7 * 60 * 60 * 1000,  
+    MIN_UPDATE_INTERVAL: 1000,
+    HISTORY_DAYS_LIMIT: 30
+};

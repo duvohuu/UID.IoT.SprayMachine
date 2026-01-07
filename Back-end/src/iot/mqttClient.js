@@ -1,10 +1,11 @@
 import mqtt from 'mqtt';
-import * as SprayMachineService from '../services/sprayMachineService.js';
 import { getIO } from '../config/socket.js';
-import {
-    verifyMachine,
-    processMQTTUpdate,
+import { 
+    verifyMachine, 
     updateMachineConnectionStatus 
+} from '../services/machineService.js';
+import {
+    processMQTTUpdate,
 } from '../services/sprayMachineService.js';
 
 /**
@@ -13,6 +14,8 @@ import {
  * ========================================
  * Kết nối đến MQTT broker và nhận dữ liệu từ máy Spray
  */
+
+// ==================== MQTT CONFIGURATION ====================
 
 const MQTT_CONFIG = {
     broker: 'mqtt://broker.hivemq.com',
@@ -23,8 +26,111 @@ const MQTT_CONFIG = {
 
 let mqttClient = null;
 
+// ==================== MESSAGE PROCESSING FUNCTIONS ====================
+
 /**
- * Khởi tạo kết nối MQTT
+ * Process incoming MQTT message
+ * Xử lý business logic: verify machine, update data, update status
+ * @param {Object} data - Parsed MQTT message data
+ * @returns {Promise<Object|null>} Processed result or null if ignored
+ */
+const processMQTTMessage = async (data) => {
+    const { machineId, status, powerConsumption } = data;
+
+    console.log(`\n📨 [MQTT] Processing message for: ${machineId}`);
+    console.log(`   Status: ${status} ${status === 1 ? '▶️  Running' : '⏸️  Stopped'}`);
+    console.log(`   Power: ${powerConsumption.toFixed(3)} kWh`);
+
+    try {
+        // Step 1: Verify machine exists (from machineService)
+        await verifyMachine(machineId);
+
+        // Step 2: Process MQTT update - save to SprayMachineData (from sprayMachineService)
+        const updatedData = await processMQTTUpdate(machineId, {
+            status,
+            powerConsumption
+        });
+
+        // Check if message was ignored (outside work shift)
+        if (!updatedData) {
+            console.log(`✅ [MQTT] Message ignored (outside work shift) for ${machineId}`);
+            return null;
+        }
+
+        console.log(`✅ [MQTT] Data processed successfully for ${machineId}`);
+
+        // Step 3: Update Machine model status (from machineService)
+        const machineStatus = status === 1 ? 'online' : 'offline';
+        await updateMachineConnectionStatus(machineId, true, machineStatus);
+        console.log(`💾 [MQTT] Updated Machine: status=${machineStatus}, isConnected=true`);
+
+        // Return processed result for socket emission
+        return {
+            updatedData,
+            machineStatus,
+            isConnected: true
+        };
+
+    } catch (error) {
+        console.error(`❌ [MQTT] Error processing message for ${machineId}:`, error.message);
+        throw error;
+    }
+};
+
+/**
+ * Emit socket events for realtime updates
+ * Tách riêng logic emit socket để dễ test và maintain
+ * @param {Object} result - Processed result from processMQTTMessage
+ */
+const emitSocketEvents = (result) => {
+    if (!result) return;
+
+    const { updatedData, machineStatus, isConnected } = result;
+
+    try {
+        const io = getIO();
+
+        // Prepare spray realtime data
+        const realtimeData = {
+            machineId: updatedData.machineId,
+            date: updatedData.date,
+            status: updatedData.lastStatus,
+            activeTime: parseFloat(updatedData.activeTime.toFixed(2)),
+            stopTime: parseFloat(updatedData.stopTime.toFixed(2)),
+            totalEnergyConsumed: parseFloat(updatedData.totalEnergyConsumed.toFixed(3)),
+            powerConsumption: parseFloat(updatedData.currentPowerConsumption.toFixed(3)),
+            lastUpdate: updatedData.lastUpdate
+        };
+
+        // Emit spray realtime data
+        io.emit('spray:realtime', realtimeData);
+        io.to(`machine-${updatedData.machineId}`).emit('spray:realtime', realtimeData);
+
+        // Prepare machine status update
+        const statusUpdate = {
+            machineId: updatedData.machineId,
+            status: machineStatus,
+            isConnected: isConnected,
+            lastStatus: updatedData.lastStatus,
+            lastUpdate: updatedData.lastUpdate,
+            lastHeartbeat: new Date()
+        };
+
+        // Emit machine status update
+        io.emit('machine:status-update', statusUpdate);
+
+        console.log(`📤 [Socket] Emitted updates for ${updatedData.machineId}`);
+
+    } catch (socketError) {
+        console.error(`⚠️  [Socket] Error emitting update:`, socketError.message);
+    }
+};
+
+// ==================== MQTT CLIENT INITIALIZATION ====================
+
+/**
+ * Initialize MQTT Client
+ * Khởi tạo kết nối MQTT và đăng ký event handlers
  */
 export const initializeMQTT = () => {
     console.log('🔌 Initializing MQTT Client...');
@@ -44,7 +150,6 @@ export const initializeMQTT = () => {
     mqttClient.on('connect', () => {
         console.log('✅ MQTT Connected successfully');
         
-        // Subscribe to topic
         mqttClient.subscribe(MQTT_CONFIG.topic, (err) => {
             if (err) {
                 console.error('❌ MQTT Subscribe Error:', err);
@@ -74,86 +179,34 @@ export const initializeMQTT = () => {
 
     mqttClient.on('message', async (topic, message) => {
         try {
+            // Parse JSON message
             const data = JSON.parse(message.toString());
-            const { machineId, status, powerConsumption } = data;
 
-            console.log(`\n📨 [MQTT] Received from ${topic}:`, data);
-            console.log(`🎯 Processing data for machine: ${machineId}`);
-            console.log(`   Status: ${status} ${status === 1 ? '▶️  Running' : '⏸️  Stopped'}`);
-            console.log(`   Power: ${powerConsumption.toFixed(3)} kWh`);
+            // Process message (business logic)
+            const result = await processMQTTMessage(data);
 
-            // Verify machine exists
-            await verifyMachine(machineId);
-
-            // Process MQTT update (lưu vào SprayMachineData)
-            const updatedData = await processMQTTUpdate(machineId, {
-                status,
-                powerConsumption
-            });
-
-            if (!updatedData) {
-                console.log(`✅ [MQTT] Message ignored (outside work shift) for ${machineId}`);
-                return;
-            }
-
-            console.log(`✅ [MQTT] Data processed successfully for ${machineId}`);
-
-            // ==================== ✅ CẬP NHẬT MACHINE MODEL ====================
-            const machineStatus = status === 1 ? 'online' : 'offline';
-            await updateMachineConnectionStatus(machineId, true, machineStatus);
-            console.log(`💾 [MQTT] Updated Machine model: status=${machineStatus}, isConnected=true`);
-
-            // ==================== EMIT SOCKET ====================
-            try {
-                const io = getIO();
-                const isConnected = true; 
-            
-                const responseData = {
-                    machineId: updatedData.machineId,
-                    date: updatedData.date,
-                    status: updatedData.lastStatus,  
-                    activeTime: parseFloat(updatedData.activeTime.toFixed(2)),
-                    stopTime: parseFloat(updatedData.stopTime.toFixed(2)),
-                    totalEnergyConsumed: parseFloat(updatedData.totalEnergyConsumed.toFixed(3)),
-                    powerConsumption: parseFloat(updatedData.currentPowerConsumption.toFixed(3)),
-                    lastUpdate: updatedData.lastUpdate
-                };
-
-                io.emit('spray:realtime', responseData);
-                io.to(`machine-${machineId}`).emit('spray:realtime', responseData);
-                
-                io.emit('machine:status-update', {
-                    machineId: machineId,
-                    status: machineStatus,           
-                    isConnected: isConnected,        
-                    lastStatus: status,              
-                    lastUpdate: updatedData.lastUpdate,
-                    lastHeartbeat: new Date()
-                });
-                
-                console.log(`📤 [Socket] Emitted status update:`, {
-                    machineId,
-                    status: machineStatus,
-                    isConnected,
-                    lastStatus: status
-                });
-
-            } catch (socketError) {
-                console.error(`⚠️  [Socket] Error emitting update: ${socketError.message}`);
+            // Emit socket events (realtime updates)
+            if (result) {
+                emitSocketEvents(result);
             }
 
         } catch (error) {
-            console.error(`❌ [MQTT] Message processing error: ${error.message}`);
-            console.error(error);
-            console.log('   Raw message:', JSON.parse(message.toString()));
+            console.error(`❌ [MQTT] Message handler error:`, error.message);
+            console.error('   Raw message:', message.toString());
         }
     });
 
-        return mqttClient;
-    };
+    return mqttClient;
+};
+
+// ==================== MQTT OPERATIONS ====================
 
 /**
- * Publish message to MQTT (nếu cần control máy từ backend)
+ * Publish message to MQTT topic
+ * Dùng để control máy từ backend (nếu cần)
+ * @param {string} topic - MQTT topic
+ * @param {Object} message - Message object to publish
+ * @returns {boolean} Success status
  */
 export const publishMQTT = (topic, message) => {
     if (!mqttClient || !mqttClient.connected) {
@@ -178,6 +231,7 @@ export const publishMQTT = (topic, message) => {
 
 /**
  * Disconnect MQTT client
+ * Graceful shutdown
  */
 export const disconnectMQTT = () => {
     if (mqttClient) {
@@ -188,6 +242,7 @@ export const disconnectMQTT = () => {
 
 /**
  * Get MQTT client status
+ * @returns {Object} MQTT status information
  */
 export const getMQTTStatus = () => {
     return {
@@ -198,6 +253,8 @@ export const getMQTTStatus = () => {
         clientId: MQTT_CONFIG.clientId
     };
 };
+
+// ==================== EXPORTS ====================
 
 export default {
     initializeMQTT,

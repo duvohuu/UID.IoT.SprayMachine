@@ -18,10 +18,10 @@ dotenv.config({ path: path.join(__dirname, '../.env') });
 
 // CẤU HÌNH USER TẠI ĐÂY
 const USER_DATA = {
-    userId: 'ADMIN001',
-    username: 'Dư',                     
-    email: 'du.vohuudu@gmail.com',      
-    password: '123456',               
+    userId: 'ADMIN002',
+    username: 'An',                     
+    email: 'huynhduyan0802@gmail.com',      
+    password: 'huynhduyan0802',               
     role: 'admin'                     
 };
 
