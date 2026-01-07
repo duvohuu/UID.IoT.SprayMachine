@@ -78,7 +78,6 @@ const SprayMachinePage = () => {
             lastHeartbeat: update.lastHeartbeat
         }));
         
-        // ✅ Update connection status in useSprayRealtime
         updateConnectionStatus(update.isConnected);
     }, [machine, updateConnectionStatus]);
 

@@ -2,82 +2,32 @@ import SprayMachineData from '../models/SprayMachineData.model.js';
 import Machine from '../models/Machine.model.js';
 import cron from 'node-cron';
 import { getIO } from '../config/socket.js';
-
-const WORK_HOURS_PER_DAY = 16; 
-const WORK_START_HOUR = 6;    
-const WORK_START_MINUTE = 0;   
-const WORK_END_HOUR = 22;     
-const WORK_END_MINUTE = 0;     
-
-/**
- * Lấy date string theo timezone Việt Nam (UTC+7)
- */
-const getVietnamDateString = (daysOffset = 0) => {
-    const now = new Date();
-    const vnTime = new Date(now.getTime() + (7 * 60 * 60 * 1000) + (daysOffset * 24 * 60 * 60 * 1000));
-    return vnTime.toISOString().split('T')[0];
-};
+import { 
+    getVietnamDateString, 
+    getVietnamTime, 
+    getWorkStartTime,
+    isWithinWorkShift,
+    formatWorkShift,
+    getMondayOfWeek,
+    getDayOfWeekName,
+    getWeekDates
+} from '../shared/utils/datetime.util.js';
+import { WORK_SHIFT, TIME_CONFIG } from '../shared/constant/workShift.constant.js';
 
 /**
- * Lấy thời gian hiện tại theo timezone Việt Nam
- */
-const getVietnamTime = () => {
-    const now = new Date();
-    return new Date(now.getTime() + (7 * 60 * 60 * 1000));
-};
-
-/**
- * Tạo timestamp chính xác cho 6:00 AM của ngày chỉ định
- */
-const getWorkStartTime = (dateString) => {
-    // dateString format: "2026-01-06"
-    const date = new Date(dateString + 'T00:00:00Z');
-    date.setUTCHours(WORK_START_HOUR - 7, WORK_START_MINUTE, 0, 0); // UTC+7 -> UTC
-    return date;
-};
-
-/**
- * Kiểm tra xem hiện tại có trong ca làm việc không
- * @returns {boolean} true nếu trong ca làm việc
- */
-const isWithinWorkShift = () => {
-    const vnTime = getVietnamTime();
-    const currentHour = vnTime.getUTCHours();
-    const currentMinute = vnTime.getUTCMinutes();
-    
-    const currentTotalMinutes = currentHour * 60 + currentMinute;
-    const startTotalMinutes = WORK_START_HOUR * 60 + WORK_START_MINUTE;
-    const endTotalMinutes = WORK_END_HOUR * 60 + WORK_END_MINUTE;
-    
-    return currentTotalMinutes >= startTotalMinutes && currentTotalMinutes < endTotalMinutes;
-};
-
-/**
- * Format thời gian ca làm việc để hiển thị
- */
-const formatWorkShift = () => {
-    const startTime = `${WORK_START_HOUR.toString().padStart(2, '0')}:${WORK_START_MINUTE.toString().padStart(2, '0')}`;
-    const endTime = `${WORK_END_HOUR.toString().padStart(2, '0')}:${WORK_END_MINUTE.toString().padStart(2, '0')}`;
-    return `${startTime} - ${endTime}`;
-};
-
-/**
- * Lấy hoặc tạo document cho hôm nay
+ * Get or create document for today
+ * @param {string} machineId - Machine identifier
+ * @returns {Promise<Object>} Spray machine data document
  */
 export const getLatestData = async (machineId) => {
     try {
         const today = getVietnamDateString();
         
-        // Bước 1: Tìm data mới nhất
         let latestData = await SprayMachineData.findOne({ 
             machineId 
         }).sort({ date: -1 });
         
-        // Bước 2: Nếu không có data hoặc data cũ → Tạo/Lấy data hôm nay
         if (!latestData || latestData.date < today) {
-            console.log(`📝 [Service] Creating/getting data for ${today}`);
-            
-            // Lấy energyAtStartOfDay từ ngày hôm qua
             const yesterday = getVietnamDateString(-1);
             const yesterdayData = await SprayMachineData.findOne({
                 machineId,
@@ -87,7 +37,6 @@ export const getLatestData = async (machineId) => {
             const energyAtStartOfDay = yesterdayData?.currentPowerConsumption || 0;
             const workStartTime = getWorkStartTime(today);
             
-            // Tránh duplicate key error khi nhiều request đồng thời
             latestData = await SprayMachineData.findOneAndUpdate(
                 { 
                     machineId, 
@@ -95,7 +44,6 @@ export const getLatestData = async (machineId) => {
                 },
                 {
                     $setOnInsert: {
-                        // Chỉ set các field này khi tạo mới (insert)
                         machineId,
                         date: today,
                         activeTime: 0,
@@ -114,113 +62,122 @@ export const getLatestData = async (machineId) => {
                     setDefaultsOnInsert: true  
                 }
             );
-            
-            console.log(`✅ [Service] Data ready for ${today}`);
-            console.log(`   energyAtStartOfDay: ${energyAtStartOfDay} kWh`);
-            console.log(`   lastStatusChangeTime: ${workStartTime.toISOString()} (6:00 AM VN)`);
-            
-        } else {
-            console.log(`✅ [Service] Using existing data: ${latestData.date}`);
         }
         
         return latestData;
         
     } catch (error) {
-        console.error(`❌ [Service] Error getting latest data for ${machineId}:`, error);
+        console.error(`Error getting latest data for ${machineId}:`, error);
         throw error;
     }
 };
 
 /**
- * ========================================
- * XỬ LÝ MQTT MESSAGE - CHỈ TRONG CA
- * ========================================
+ * Calculate energy consumption
+ * @param {Object} data - Current spray machine data
+ * @param {number} powerConsumption - Current power consumption reading
+ * @returns {Object} Updated data with energy consumption
+ */
+const calculateEnergyConsumption = (data, powerConsumption) => {
+    const energyConsumed = powerConsumption - data.energyAtStartOfDay;
+    data.totalEnergyConsumed = Math.max(0, energyConsumed);
+    data.currentPowerConsumption = powerConsumption;
+    
+    return data;
+};
+
+/**
+ * Update machine active/stop time based on status change
+ * @param {Object} data - Current spray machine data
+ * @param {number} currentStatus - Current machine status (0 or 1)
+ * @param {Date} now - Current timestamp
+ * @returns {Object} Updated data with time calculations
+ */
+const updateMachineTime = (data, currentStatus, now) => {
+    const previousStatus = data.lastStatus;
+    const timeSinceLastChange = now - new Date(data.lastStatusChangeTime);
+    const hoursSinceLastChange = timeSinceLastChange / (1000 * 60 * 60);
+    
+    if (timeSinceLastChange > TIME_CONFIG.MIN_UPDATE_INTERVAL) {
+        if (previousStatus === 1) {
+            data.activeTime += hoursSinceLastChange;
+            data.activeTime = Math.min(data.activeTime, WORK_SHIFT.HOURS_PER_DAY);
+        } else {
+            data.stopTime += hoursSinceLastChange;
+            data.stopTime = Math.min(data.stopTime, WORK_SHIFT.HOURS_PER_DAY);
+        }
+        
+        data.lastStatusChangeTime = now;
+        data.lastStatus = currentStatus;
+    }
+    
+    return data;
+};
+
+/**
+ * Validate and clamp time values within work hours
+ * @param {Object} data - Spray machine data to validate
+ * @returns {Object} Validated data
+ */
+const validateAndClampTimeValues = (data) => {
+    data.activeTime = Math.max(0, Math.min(data.activeTime, WORK_SHIFT.HOURS_PER_DAY));
+    data.stopTime = Math.max(0, Math.min(data.stopTime, WORK_SHIFT.HOURS_PER_DAY));
+    return data;
+};
+
+/**
+ * Process MQTT message update - Only during work shift
+ * @param {string} machineId - Machine identifier
+ * @param {Object} mqttData - MQTT message data containing status and powerConsumption
+ * @returns {Promise<Object|null>} Updated data or null if outside work shift
  */
 export const processMQTTUpdate = async (machineId, mqttData) => {
     try {
         const { status, powerConsumption } = mqttData;
         const now = new Date();
         
-        // ==================== KIỂM TRA CA LÀM VIỆC ====================
+        // Check work shift
         if (!isWithinWorkShift()) {
-            console.log(`⏰ [Service] Outside work shift. Ignoring update.`);
             return null;
         }
         
-        // ==================== LẤY/TẠO DATA ====================
-        const data = await getLatestData(machineId);
+        // Get or create today's data
+        let data = await getLatestData(machineId);
         
-        // ==================== CẬP NHẬT NĂNG LƯỢNG ====================
-        const energyConsumed = powerConsumption - data.energyAtStartOfDay;
-        data.totalEnergyConsumed = Math.max(0, energyConsumed);
-        data.currentPowerConsumption = powerConsumption;
+        // Calculate energy consumption
+        data = calculateEnergyConsumption(data, powerConsumption);
         
-        console.log(`⚡ [Service] Energy: start=${data.energyAtStartOfDay.toFixed(3)}kWh, current=${powerConsumption.toFixed(3)}kWh, consumed=${data.totalEnergyConsumed.toFixed(3)}kWh`);
-        
-        // ==================== CẬP NHẬT THỜI GIAN ====================
-        
-        const previousStatus = data.lastStatus;
+        // Update machine time based on status
         const currentStatus = (typeof status === 'number' && status === 1) ? 1 : 0;
-        const timeSinceLastChange = now - new Date(data.lastStatusChangeTime);
-        const hoursSinceLastChange = timeSinceLastChange / (1000 * 60 * 60);
+        data = updateMachineTime(data, currentStatus, now);
         
-        console.log(`[Service] Status: previous=${previousStatus}, current=${currentStatus}`);
-        console.log(`[Service] Time since last change: ${hoursSinceLastChange.toFixed(3)}h`);
+        // Validate and clamp values
+        data = validateAndClampTimeValues(data);
         
-        if (timeSinceLastChange > 1000) {
-            
-            if (previousStatus === 1) {
-                data.activeTime += hoursSinceLastChange;
-                data.activeTime = Math.min(data.activeTime, WORK_HOURS_PER_DAY);
-                console.log(`▶️ [Service] Added ${hoursSinceLastChange.toFixed(3)}h to activeTime. Total: ${data.activeTime.toFixed(2)}h`);
-            } else {
-                data.stopTime += hoursSinceLastChange;
-                data.stopTime = Math.min(data.stopTime, WORK_HOURS_PER_DAY);
-                console.log(`⏸️ [Service] Added ${hoursSinceLastChange.toFixed(3)}h to stopTime. Total: ${data.stopTime.toFixed(2)}h`);
-            }
-            
-            data.lastStatusChangeTime = now;
-            data.lastStatus = currentStatus;
-            
-            if (previousStatus !== currentStatus) {
-                if (currentStatus === 1) {
-                    console.log(`🟢 [Service] Machine STARTED running at ${now.toISOString()}`);
-                } else {
-                    console.log(`🔴 [Service] Machine STOPPED at ${now.toISOString()}`);
-                }
-            }
-            
-        } else {
-            console.log(`⚠️ [Service] Update too fast (${timeSinceLastChange}ms), skipping time calculation`);
-        }
-        
-        // ==================== CẬP NHẬT METADATA ====================
-        
+        // Update metadata
         data.lastUpdate = now;
         
-        data.activeTime = Math.max(0, Math.min(data.activeTime, WORK_HOURS_PER_DAY));
-        data.stopTime = Math.max(0, Math.min(data.stopTime, WORK_HOURS_PER_DAY));
-        
+        // Save to database
         await data.save();
-        
-        console.log(`✅ [Service] Saved: activeTime=${data.activeTime.toFixed(2)}h, stopTime=${data.stopTime.toFixed(2)}h, energy=${data.totalEnergyConsumed.toFixed(3)}kWh`);
         
         return data;
         
     } catch (error) {
-        console.error(`[Service] Error processing MQTT for ${machineId}:`, error);
+        console.error(`Error processing MQTT for ${machineId}:`, error);
         throw error;
     }
 };
 
 /**
- * Lấy lịch sử 30 ngày
+ * Get 30 days history
+ * @param {string} machineId - Machine identifier
+ * @returns {Promise<Array>} Array of historical data
  */
 export const get30DaysHistory = async (machineId) => {
     const history = await SprayMachineData
         .find({ machineId })
         .sort({ date: -1 })
-        .limit(30)
+        .limit(TIME_CONFIG.HISTORY_DAYS_LIMIT)
         .select('-__v -createdAt -updatedAt')
         .lean();
     
@@ -228,7 +185,9 @@ export const get30DaysHistory = async (machineId) => {
 };
 
 /**
- * Lấy thống kê 30 ngày
+ * Get statistics for last 30 days
+ * @param {string} machineId - Machine identifier
+ * @returns {Promise<Object>} Statistics object
  */
 export const getStatistics = async (machineId) => {
     const history = await get30DaysHistory(machineId);
@@ -262,9 +221,10 @@ export const getStatistics = async (machineId) => {
 };
 
 /**
- * ========================================
- * DAILY RESET - TẠO DATA MỚI CHO NGÀY HÔM NAY
- * ========================================
+ * Reset daily data - Create new data for target date
+ * @param {string} machineId - Machine identifier
+ * @param {number} daysOffset - Days offset from today (0 = today, -1 = yesterday)
+ * @returns {Promise<Object>} Created or reset data document
  */
 export const resetDailyData = async (machineId, daysOffset = 0) => {
     const targetDate = getVietnamDateString(daysOffset);
@@ -278,14 +238,14 @@ export const resetDailyData = async (machineId, daysOffset = 0) => {
         
         const energyAtStartOfDay = previousData?.currentPowerConsumption || 0;
         const workStartTime = getWorkStartTime(targetDate); 
+        
         let targetData = await SprayMachineData.findOne({ 
             machineId, 
             date: targetDate 
         });
         
         if (targetData) {
-            console.log(`🔄 [Service] Resetting existing data for ${machineId} on ${targetDate}`);
-            
+            // Reset existing data
             targetData.activeTime = 0;
             targetData.stopTime = 0;
             targetData.totalEnergyConsumed = 0;
@@ -296,8 +256,7 @@ export const resetDailyData = async (machineId, daysOffset = 0) => {
             
             await targetData.save();
         } else {
-            console.log(`📝 [Service] Creating new data for ${machineId} on ${targetDate}`);
-            
+            // Create new data
             targetData = await SprayMachineData.create({
                 machineId,
                 date: targetDate,
@@ -311,97 +270,38 @@ export const resetDailyData = async (machineId, daysOffset = 0) => {
             });
         }
         
-        console.log(`🌙 [Service] Reset data for ${machineId} on ${targetDate}`);
-        console.log(`   EnergyAtStart: ${energyAtStartOfDay} kWh`);
-        console.log(`   lastStatusChangeTime: ${workStartTime.toISOString()} (6:00 AM VN)`);
-        
         return targetData;
         
     } catch (error) {
-        console.error(`❌ [Service] Error resetting data for ${machineId}:`, error);
+        console.error(`Error resetting data for ${machineId}:`, error);
         throw error;
     }
 };
 
 /**
- * Verify machine exists
- */
-export const verifyMachine = async (machineId) => {
-    const machine = await Machine.findOne({ 
-        machineId, 
-        type: 'Spray Machine' 
-    });
-    
-    if (!machine) {
-        throw new Error(`Spray Machine ${machineId} not found`);
-    }
-    
-    return machine;
-};
-
-/**
- * Update machine connection status
- */
-export const updateMachineConnectionStatus = async (machineId, isConnected, machineStatus = null) => {
-    try {
-        const updateData = {
-            isConnected,
-            lastHeartbeat: new Date()
-        };
-        
-        if (machineStatus) {
-            updateData.status = machineStatus; 
-        } else {
-            // Fallback
-            updateData.status = isConnected ? 'online' : 'offline';
-        }
-                
-        const result = await Machine.findOneAndUpdate(
-            { machineId },
-            updateData,
-            { new: true, runValidators: true }  
-        );
-        return result;
-    } catch (error) {
-        console.error(`❌ [Service] Error updating Machine ${machineId}:`, error);
-        throw error;
-    }
-};
-
-/**
- * ========================================
- * DAILY RESET SCHEDULER - TẠO CA MỚI LÚC 6:00 SÁNG
- * ========================================
+ * Reset all spray machines - Create new shift at 6:00 AM
+ * @param {number} daysOffset - Days offset from today (0 = today)
  */
 export const resetAllSprayMachines = async (daysOffset = 0) => {
     const targetDate = getVietnamDateString(daysOffset);
-    
-    console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.log(`🌅 Daily Reset - Creating new shift`);
-    console.log(`📅 Target date: ${targetDate}`);
-    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
 
     try {
         const machines = await Machine.find({ type: 'Spray Machine' });
-        console.log(`📊 Found ${machines.length} Spray Machines\n`);
 
         const results = await Promise.allSettled(
             machines.map(async (machine) => {
                 const newData = await resetDailyData(machine.machineId, daysOffset);
                 
-                // Emit socket event
+                // Emit socket event to machine room and general spray machines room
                 const io = getIO();
-                io.to(`machine-${machine.machineId}`).emit('spray:daily-reset', {
+                const resetEvent = {
                     machineId: machine.machineId,
                     date: targetDate,
                     message: 'New shift created at 6:00 AM'
-                });
+                };
                 
-                io.to('spray-machines').emit('spray:daily-reset', {
-                    machineId: machine.machineId,
-                    date: targetDate,
-                    message: 'New shift created at 6:00 AM'
-                });
+                io.to(`machine-${machine.machineId}`).emit('spray:daily-reset', resetEvent);
+                io.to('spray-machines').emit('spray:daily-reset', resetEvent);
                 
                 return machine.machineId;
             })
@@ -410,42 +310,35 @@ export const resetAllSprayMachines = async (daysOffset = 0) => {
         const succeeded = results.filter(r => r.status === 'fulfilled').length;
         const failed = results.filter(r => r.status === 'rejected').length;
 
-        console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-        console.log(`📊 Summary: ✅ ${succeeded}/${machines.length} succeeded`);
+        console.log(`Daily reset completed: ${succeeded}/${machines.length} succeeded`);
+        
         if (failed > 0) {
-            console.log(`   ❌ ${failed} failed`);
+            console.error(`Daily reset failed for ${failed} machines`);
             results.forEach((result, index) => {
                 if (result.status === 'rejected') {
-                    console.log(`   Machine ${machines[index].machineId}: ${result.reason}`);
+                    console.error(`Machine ${machines[index].machineId}:`, result.reason);
                 }
             });
         }
-        console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
 
     } catch (error) {
-        console.error('❌ [Daily Reset] Error:', error.message);
+        console.error('Daily reset error:', error.message);
     }
 };
 
-
+/**
+ * Initialize daily reset scheduler - Runs at 6:00 AM Vietnam time
+ * @returns {Object} Cron job instance
+ */
 export const initializeDailyResetScheduler = () => {
-    console.log('⏰ [Scheduler] Initializing daily reset');
-    console.log(`   Work shift: ${formatWorkShift()}`);
+    const UTC_HOUR = (WORK_SHIFT.START_HOUR - TIME_CONFIG.VIETNAM_TIMEZONE_OFFSET + 24) % 24;
+    const cronExpression = `${WORK_SHIFT.START_MINUTE} ${UTC_HOUR} * * *`;
     
-    const RESET_HOUR = WORK_START_HOUR; // 6 AM
-    const RESET_MINUTE = WORK_START_MINUTE; // 0
-    
-    const UTC_HOUR = (RESET_HOUR - 7 + 24) % 24; // 6 - 7 = -1 -> 23 (11 PM UTC ngày hôm trước)
-    
-    console.log(`   🌅 Will create TODAY's data at:`);
-    console.log(`      Vietnam time: ${RESET_HOUR.toString().padStart(2, '0')}:${RESET_MINUTE.toString().padStart(2, '0')} (6:00 AM)`);
-    console.log(`      UTC time: ${UTC_HOUR.toString().padStart(2, '0')}:${RESET_MINUTE.toString().padStart(2, '0')}`);
-    
-    const cronExpression = `${RESET_MINUTE} ${UTC_HOUR} * * *`; // "0 23 * * *" (11 PM UTC)
+    console.log(`Daily reset scheduler initialized: ${formatWorkShift()}`);
+    console.log(`Cron expression: ${cronExpression} (UTC)`);
     
     const cronJob = cron.schedule(cronExpression, async () => {
-        console.log('🌅 [Cron] Creating data for TODAY at 6:00 AM Vietnam time');
-        
+        console.log('Running daily reset at 6:00 AM Vietnam time');
         await resetAllSprayMachines(0);
     }, {
         timezone: 'UTC', 
@@ -455,48 +348,16 @@ export const initializeDailyResetScheduler = () => {
     return cronJob;
 };
 
-export const testDailyReset = async () => {
-    console.log('🧪 [Test] Running manual reset for TODAY...\n');
-    await resetAllSprayMachines(0);
-};
-
 /**
- * ========================================
- * WEEKLY DATA 
- * ========================================
+ * Get current week data (Monday to Sunday)
+ * @param {string} machineId - Machine identifier
+ * @returns {Promise<Array>} Array of 7 days with data
  */
-
-const getMondayOfWeek = (dateString) => {
-    const date = new Date(dateString + 'T00:00:00Z');
-    const day = date.getUTCDay();
-    const diff = day === 0 ? -6 : 1 - day;
-    
-    const monday = new Date(date);
-    monday.setUTCDate(date.getUTCDate() + diff);
-    
-    return monday.toISOString().split('T')[0];
-};
-
-const getDayOfWeekName = (dateString) => {
-    const date = new Date(dateString + 'T00:00:00Z');
-    const day = date.getUTCDay();
-    const days = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
-    return days[day];
-};
-
 export const getCurrentWeekData = async (machineId) => {
     try {
         const today = getVietnamDateString();
         const monday = getMondayOfWeek(today);
-        
-        console.log(`📅 [Service] Current week: Monday = ${monday}, Today = ${today}`);
-        
-        const weekDates = [];
-        for (let i = 0; i < 7; i++) {
-            const date = new Date(monday + 'T00:00:00Z');
-            date.setUTCDate(date.getUTCDate() + i);
-            weekDates.push(date.toISOString().split('T')[0]);
-        }
+        const weekDates = getWeekDates(monday);
         
         const weekData = await SprayMachineData
             .find({ 
@@ -514,14 +375,15 @@ export const getCurrentWeekData = async (machineId) => {
                 dayOfWeek: getDayOfWeekName(date),
                 activeTime: existingData?.activeTime || 0,              
                 stopTime: existingData?.stopTime || 0,                  
-                totalEnergyConsumed: existingData?.totalEnergyConsumed || 0  
+                totalEnergyConsumed: existingData?.totalEnergyConsumed || 0,
+                hasData: !!existingData
             };
         });
                 
         return result;
         
     } catch (error) {
-        console.error(`❌ [Service] Error getting week data for ${machineId}:`, error);
+        console.error(`Error getting week data for ${machineId}:`, error);
         throw error;
     }
 };

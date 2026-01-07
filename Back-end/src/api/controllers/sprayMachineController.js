@@ -188,8 +188,8 @@ export const getSprayPieChartData = async (req, res) => {
         const data = await SprayMachineService.getLatestData(machineId);
         
         const pieChartData = {
-            operatingTime: parseFloat(data.activeTime.toFixed(2)),       // ← Lấy từ DB
-            pausedTime: parseFloat(data.stopTime.toFixed(2)),            // ← Lấy từ DB
+            operatingTime: parseFloat(data.activeTime.toFixed(2)),       
+            pausedTime: parseFloat(data.stopTime.toFixed(2)),            
             idleTime: 0
         };
         

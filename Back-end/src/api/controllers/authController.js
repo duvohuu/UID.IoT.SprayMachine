@@ -1,5 +1,11 @@
-import jwt from 'jsonwebtoken';
 import User from '../../models/User.model.js';
+import { 
+    generateAccessToken, 
+    generateRefreshToken,
+    verifyAccessToken,
+    verifyRefreshToken 
+} from '../../shared/utils/token.util.js';
+import { setAuthCookies, clearAuthCookies } from '../../shared/utils/cookie.util.js';
 
 /**
  * ========================================
@@ -8,50 +14,28 @@ import User from '../../models/User.model.js';
  */
 
 /**
- * Generate Access Token
- */
-const generateAccessToken = (user) => {
-    return jwt.sign(
-        { userId: user.userId || user._id },
-        process.env.JWT_SECRET,
-        { expiresIn: process.env.JWT_EXPIRE || '15m' }
-    );
-};
-
-/**
- * Generate Refresh Token
- */
-const generateRefreshToken = (user) => {
-    return jwt.sign(
-        { userId: user.userId || user._id },
-        process.env.JWT_REFRESH_SECRET,
-        { expiresIn: process.env.JWT_REFRESH_EXPIRE || '7d' }
-    );
-};
-
-/**
  * @route   POST /api/auth/login
  * @desc    Login user
  * @access  Public
  */
 export const login = async (req, res) => {
     try {
-        const { email, password } = req.body; 
+        const { email, password } = req.body;
 
         // Validate input
-        if (!email || !password) { 
+        if (!email || !password) {
             return res.status(400).json({
                 success: false,
-                message: 'Email và password là bắt buộc'  
+                message: 'Email và password là bắt buộc'
             });
         }
 
-        // Find user by email
-        const user = await User.findOne({ email }).select('+password');  
+        // Find user
+        const user = await User.findOne({ email }).select('+password');
         if (!user) {
             return res.status(401).json({
                 success: false,
-                message: 'Email hoặc password không đúng'  
+                message: 'Email hoặc password không đúng'
             });
         }
 
@@ -60,7 +44,7 @@ export const login = async (req, res) => {
         if (!isPasswordValid) {
             return res.status(401).json({
                 success: false,
-                message: 'Email hoặc password không đúng' 
+                message: 'Email hoặc password không đúng'
             });
         }
 
@@ -68,28 +52,16 @@ export const login = async (req, res) => {
         const accessToken = generateAccessToken(user);
         const refreshToken = generateRefreshToken(user);
 
-        // Save refresh token to database
+        // Save refresh token
         user.refreshToken = refreshToken;
         await user.save();
 
-        res.cookie('accessToken', accessToken, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-            maxAge: 15 * 60 * 1000 
-        });
-
-        res.cookie('refreshToken', refreshToken, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-            maxAge: 7 * 24 * 60 * 60 * 1000 
-        });
+        // Set cookies
+        setAuthCookies(res, accessToken, refreshToken);
 
         console.log(`✅ User logged in: ${user.username} (${user.role})`);
-        console.log(`🍪 Cookies set: secure=${process.env.NODE_ENV === 'production'}, sameSite=${process.env.NODE_ENV === 'production' ? 'none' : 'lax'}`);
 
-        // Return user data (exclude password & refreshToken)
+        // Return user data
         const userData = user.toObject();
         delete userData.password;
         delete userData.refreshToken;
@@ -127,17 +99,7 @@ export const logout = async (req, res) => {
             );
         }
 
-        res.clearCookie('accessToken', {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax'
-        });
-        
-        res.clearCookie('refreshToken', {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax'
-        });
+        clearAuthCookies(res);
 
         res.json({
             success: true,
@@ -171,20 +133,12 @@ export const refreshToken = async (req, res) => {
         }
 
         // Verify refresh token
-        let decoded;
-        try {
-            decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET);
-        } catch (err) {
-            return res.status(401).json({
-                success: false,
-                message: 'Invalid or expired refresh token'
-            });
-        }
+        const decoded = verifyRefreshToken(refreshToken);
 
         // Find user
-        const user = await User.findOne({ 
-            userId: decoded.userId, 
-            refreshToken 
+        const user = await User.findOne({
+            userId: decoded.userId,
+            refreshToken
         }).select('+refreshToken');
 
         if (!user) {
@@ -197,6 +151,7 @@ export const refreshToken = async (req, res) => {
         // Generate new access token
         const newAccessToken = generateAccessToken(user);
 
+        // Set new cookie
         res.cookie('accessToken', newAccessToken, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
@@ -236,18 +191,11 @@ export const verifyToken = async (req, res) => {
         }
 
         // Verify token
-        let decoded;
-        try {
-            decoded = jwt.verify(accessToken, process.env.JWT_SECRET);
-        } catch (err) {
-            return res.json({
-                valid: false,
-                message: 'Invalid token'
-            });
-        }
+        const decoded = verifyAccessToken(accessToken);
 
         // Get user
-        const user = await User.findOne({ userId: decoded.userId }).select('-password -refreshToken');
+        const user = await User.findOne({ userId: decoded.userId })
+            .select('-password -refreshToken');
 
         if (!user || !user.isActive) {
             return res.json({
