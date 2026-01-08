@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
     Card, 
     CardActionArea, 
@@ -43,6 +43,7 @@ const MachineStatusCard = ({ machine, user, onClick, onDelete }) => {
     const theme = useTheme();
     const isConnected = machine.isConnected;
     const isAdmin = user?.role === 'admin';
+    const [lastClickTime, setLastClickTime] = useState(null);
     
     let statusColor, statusText, statusIcon, statusBgColor, primaryStatusIcon;
     
@@ -62,9 +63,32 @@ const MachineStatusCard = ({ machine, user, onClick, onDelete }) => {
     
     const canViewDetails = true;
 
+    useEffect(() => {
+        if (machine?.machineId) {
+            const savedTime = localStorage.getItem(`machine_${machine.machineId}_lastClick`);
+            if (savedTime) {
+                setLastClickTime(savedTime);
+            }
+        }
+    }, [machine?.machineId]);
+    
+    const handleCardClick = () => {
+        if (canViewDetails && onClick) {
+            // Lưu thời gian hiện tại
+            const now = new Date().toISOString();
+            localStorage.setItem(`machine_${machine.machineId}_lastClick`, now);
+            setLastClickTime(now);
+            
+            // Gọi onClick handler
+            onClick(machine);
+        }
+    };
+
     const handleDeleteClick = (e) => {
         e.stopPropagation();
         if (onDelete) {
+            // Xóa thời gian click khi xóa máy
+            localStorage.removeItem(`machine_${machine.machineId}_lastClick`);
             onDelete(machine);
         }
     };
@@ -110,7 +134,7 @@ const MachineStatusCard = ({ machine, user, onClick, onDelete }) => {
         >
 
             <CardActionArea
-                onClick={() => canViewDetails && onClick && onClick(machine)}
+                onClick={handleCardClick}                
                 disabled={!canViewDetails}
                 sx={{ 
                     flexGrow: 1,
@@ -413,7 +437,7 @@ const MachineStatusCard = ({ machine, user, onClick, onDelete }) => {
 
                     {/* LAST UPDATE WITH ENHANCED STYLING */}
                     <Box sx={{ mt: 'auto', mb: 1.5 }}>
-                        {machine.lastUpdate ? (
+                        {lastClickTime ? (
                             <Box sx={{ 
                                 display: 'flex', 
                                 alignItems: 'center', 
@@ -434,10 +458,17 @@ const MachineStatusCard = ({ machine, user, onClick, onDelete }) => {
                                 }} />
                                 <Box>
                                     <Typography variant="body2" sx={{ color: 'info.main', fontWeight: 600, fontSize: '0.9rem' }}>
-                                        Cập nhật gần nhất
+                                        Lần xem gần nhất
                                     </Typography>
                                     <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.8rem' }}>
-                                        {new Date(machine.lastUpdate).toLocaleString('vi-VN')}
+                                        {new Date(lastClickTime).toLocaleString('vi-VN', {
+                                            year: 'numeric',
+                                            month: '2-digit',
+                                            day: '2-digit',
+                                            hour: '2-digit',
+                                            minute: '2-digit',
+                                            second: '2-digit'
+                                        })}
                                     </Typography>
                                 </Box>
                             </Box>
@@ -453,7 +484,7 @@ const MachineStatusCard = ({ machine, user, onClick, onDelete }) => {
                             }}>
                                 <WarningIcon sx={{ fontSize: 20, color: 'warning.main' }} />
                                 <Typography variant="body2" sx={{ color: 'warning.main', fontWeight: 600 }}>
-                                    Chưa có dữ liệu cập nhật
+                                    Chưa xem máy này
                                 </Typography>
                             </Box>
                         )}
