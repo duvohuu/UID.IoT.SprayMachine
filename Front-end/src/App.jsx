@@ -96,18 +96,40 @@ const App = () => {
                             user={user}
                             setUser={setUser}
                         />
-                        <Box component="main" sx={{ flexGrow: 1, bgcolor: 'background.default' }}>
+                        <Box 
+                            component="main" 
+                            sx={{ 
+                                flexGrow: 1, 
+                                bgcolor: 'background.default',
+                                minHeight: '100vh',
+                                display: 'flex',
+                                flexDirection: 'column'
+                            }}
+                        >
                             <Toolbar />
-                            <Box sx={{ px: 3, pt: 2 }}>
+                            
+                            <Box sx={{ 
+                                position: 'sticky',
+                                top: 64, // Chiều cao của Toolbar
+                                zIndex: (theme) => theme.zIndex.appBar - 1,
+                                bgcolor: 'background.default',
+                                px: 3,
+                                pt: 2
+                            }}>
                                 <Breadcrumb />
                             </Box>
 
-                            <Routes>
-                                <Route path="/" element={<Navigate to="/status" replace />} />
-                                <Route path="/status" element={<StatusPage user={user} />} />
-                                <Route path="/setting" element={<SettingPage user={user} mode={mode} setMode={setMode} />} />
-                                <Route path="/spray/:machineId" element={<SprayMachinePage user={user} />} />
-                            </Routes>
+                            <Box sx={{ 
+                                flexGrow: 1,
+                                overflowY: 'auto' // Cho phép scroll
+                            }}>
+                                <Routes>
+                                    <Route path="/" element={<Navigate to="/status" replace />} />
+                                    <Route path="/status" element={<StatusPage user={user} />} />
+                                    <Route path="/setting" element={<SettingPage user={user} mode={mode} setMode={setMode} />} />
+                                    <Route path="/spray/:machineId" element={<SprayMachinePage user={user} />} />
+                                </Routes>
+                            </Box>
                         </Box>
                     </Box>
                 </SnackbarProvider>
