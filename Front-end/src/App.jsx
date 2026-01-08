@@ -4,6 +4,7 @@ import { Box, Toolbar, CssBaseline, ThemeProvider } from '@mui/material';
 import { getTheme } from './theme';
 import Header from './components/header/Header';
 import Sidebar from './components/layout/Sidebar';
+import Breadcrumb from './components/common/Breadcrumb'; 
 import StatusPage from './pages/StatusPage';
 import SettingPage from './pages/SettingPage';
 import SprayMachinePage from './pages/SprayMachinePage'; 
@@ -97,6 +98,10 @@ const App = () => {
                         />
                         <Box component="main" sx={{ flexGrow: 1, bgcolor: 'background.default' }}>
                             <Toolbar />
+                            <Box sx={{ px: 3, pt: 2 }}>
+                                <Breadcrumb />
+                            </Box>
+
                             <Routes>
                                 <Route path="/" element={<Navigate to="/status" replace />} />
                                 <Route path="/status" element={<StatusPage user={user} />} />

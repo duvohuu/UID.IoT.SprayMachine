@@ -72,7 +72,7 @@ const StatusPage = ({ user }) => {
         } catch (error) {
             console.error("Lỗi lấy danh sách máy:", error);
             setMachines([]);
-            setError("Lỗi kết nối API - Kiểm tra kết nối server");
+            // setError("Lỗi kết nối API - Kiểm tra kết nối server");
         } finally {
             setLoading(false);
         }
