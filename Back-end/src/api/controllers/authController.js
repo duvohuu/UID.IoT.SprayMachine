@@ -59,7 +59,7 @@ export const login = async (req, res) => {
         // Set cookies
         setAuthCookies(res, accessToken, refreshToken);
 
-        console.log(`✅ User logged in: ${user.username} (${user.role})`);
+        console.log(`User logged in: ${user.username} (${user.role})`);
 
         // Return user data
         const userData = user.toObject();
@@ -106,7 +106,7 @@ export const logout = async (req, res) => {
             message: 'Logout successful'
         });
 
-        console.log(`✅ User logged out`);
+        console.log(`User logged out`);
     } catch (error) {
         console.error('❌ Logout error:', error);
         res.status(500).json({
@@ -159,7 +159,7 @@ export const refreshToken = async (req, res) => {
             maxAge: 15 * 60 * 1000
         });
 
-        console.log(`✅ Access token refreshed for user: ${user.username}`);
+        console.log(`Access token refreshed for user: ${user.username}`);
 
         res.json({
             success: true,

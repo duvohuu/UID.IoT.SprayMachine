@@ -9,18 +9,15 @@ const __dirname = path.dirname(__filename);
 dotenv.config({ path: path.join(__dirname, '../.env') });
 
 const addMachine = async () => {
-    try {
-        console.log('🔄 Connecting to MongoDB...');
-        
+    try {        
         // Verify MONGO_URI exists
         if (!process.env.MONGO_URI) {
             console.error('❌ MONGO_URI not found in .env file!');
-            console.log('   Please check Back-end/.env file');
             process.exit(1);
         }
 
         await mongoose.connect(process.env.MONGO_URI);
-        console.log('✅ MongoDB Connected');
+        console.log('Connected to MongoDB');
 
         // CẤU HÌNH MÁY MỚI
         const newMachine = {
@@ -37,9 +34,9 @@ const addMachine = async () => {
         // Kiểm tra xem máy đã tồn tại chưa
         const existingMachine = await Machine.findOne({ machineId: newMachine.machineId });
         if (existingMachine) {
-            console.log(`⚠️  Machine ${newMachine.machineId} already exists!`);
-            console.log('   _id:', existingMachine._id);
-            console.log('   Name:', existingMachine.name);
+            console.log(`  Machine ${newMachine.machineId} already exists!`);
+            console.log('  _id:', existingMachine._id);
+            console.log('  Name:', existingMachine.name);
             console.log('\n   To delete it first, run:');
             console.log(`   node scripts/deleteMachine.js ${newMachine.machineId}`);
             process.exit(0);

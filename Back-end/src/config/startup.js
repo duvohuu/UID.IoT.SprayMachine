@@ -15,9 +15,6 @@ let cronJob = null;
  * Khởi tạo tất cả services
  */
 export const initializeServices = () => {
-    console.log('\n🚀 Initializing services...');
-    
-    // 1. Initialize MQTT Client (delay 2s để đảm bảo Socket.IO đã ready)
     setTimeout(() => {
         console.log('🔌 Starting MQTT Client...');
         mqttClient = initializeMQTT();

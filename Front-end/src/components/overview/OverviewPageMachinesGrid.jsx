@@ -34,7 +34,7 @@ const OverviewPageMachinesGrid = ({ machines, loading, user, onMachineClick, onM
         if (!machineToDelete) return;
 
         try {
-            console.log('🗑️ Deleting machine from DATABASE:');
+            console.log('   Deleting machine from DATABASE:');
             console.log('   Full machine object:', machineToDelete);
             console.log('   Machine ID:', machineToDelete.machineId);
             console.log('   MongoDB _id:', machineToDelete._id);
@@ -47,10 +47,7 @@ const OverviewPageMachinesGrid = ({ machines, loading, user, onMachineClick, onM
                 console.error('No valid ID found on machine object!');
                 showSnackbar('Lỗi: Không tìm thấy ID của máy', 'error');
                 return;
-            }
-            
-            console.log('   Using ID for deletion:', idToDelete);
-            
+            }            
             const result = await deleteMachine(idToDelete);
             
             if (result.success) {

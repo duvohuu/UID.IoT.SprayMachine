@@ -38,7 +38,6 @@ const OverviewPage = ({ user }) => {
 
     // Fetch machines
     const fetchMachines = useCallback(async () => {
-        console.log("🔄 Fetching machines from mainServer...");
         setLoading(true);
         
         try {
@@ -48,15 +47,6 @@ const OverviewPage = ({ user }) => {
             const machines = result.data?.machines || [];
             
             if (result.success && machines.length > 0) {
-                console.log("Machines loaded from API:", machines.length);
-                
-                machines.forEach(m => {
-                    console.log(`   Machine ${m.machineId}:`, {
-                        status: m.status,         
-                        isConnected: m.isConnected, 
-                        lastUpdate: m.lastUpdate
-                    });
-                });
                 
                 const sortedMachines = sortMachinesByMachineId(machines);
                 setMachines(sortedMachines);
@@ -80,7 +70,7 @@ const OverviewPage = ({ user }) => {
 
     // Handle machine status updates from socket
     const handleMachineStatusUpdate = useCallback((update) => {
-        console.log('📡 Machine status update from socket:', update);
+        console.log('   Machine status update from socket:', update);
         console.log('   Status:', update.status);          
         console.log('   isConnected:', update.isConnected); 
         console.log('   lastStatus:', update.lastStatus);   
@@ -110,9 +100,7 @@ const OverviewPage = ({ user }) => {
     }, [fetchMachines]);
 
     // Event handlers
-    const handleMachineClick = (machine) => {
-        console.log("Điều hướng đến chi tiết máy:", machine.name, "machineId:", machine.machineId);
-        
+    const handleMachineClick = (machine) => {        
         if (machine.type === 'Powder Filling Machine') {
             navigate(`/powder/${machine.machineId}`);
         } else if (machine.type === 'CNC Machine') {
@@ -128,20 +116,16 @@ const OverviewPage = ({ user }) => {
 
     const handleMachineDelete = async (deletedMachine) => {
         try {
-            console.log('🔄 Refreshing machine list after deletion...');
             console.log('   Deleted machine:', deletedMachine.machineId);
             
             const result = await getMachines();
             const machines = result.data?.machines || [];
             
             if (result.success && machines.length >= 0) {
-                console.log(`   Fetched ${machines.length} machines from API`);
                 const sortedMachines = sortMachinesByMachineId(machines);
                 setMachines(sortedMachines);
-                console.log("✅ Machine list refreshed - UI updated!");
             } else {
                 setMachines([]);
-                console.log("✅ No machines left - UI cleared");
             }
         } catch (error) {
             console.error("❌ Error refreshing machines after delete:", error);

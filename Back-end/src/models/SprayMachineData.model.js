@@ -13,9 +13,8 @@ const SprayMachineDataSchema = new mongoose.Schema({
         index: true
     },
     
-    // ==================== THỜI GIAN - NEW LOGIC ====================
+    // ==================== THỜI GIAN ====================
     
-    // Thời gian máy HOẠT ĐỘNG (status = 1)
     activeTime: {
         type: Number,
         default: 0,
@@ -23,7 +22,6 @@ const SprayMachineDataSchema = new mongoose.Schema({
         max: 24
     },
     
-    // Thời gian máy DỪNG (status != 1, bao gồm: status=0, không nhận JSON, server đang chạy nhưng máy không phản hồi)
     stopTime: {
         type: Number,
         default: 0,

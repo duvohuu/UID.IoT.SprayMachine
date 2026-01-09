@@ -78,14 +78,12 @@ export const protect = async (req, res, next) => {
 /**
  * Admin only middleware
  */
-export const adminOnly = (req, res, next) => {
-    console.log(`🔐 [AdminCheck] User: ${req.user?.username}, Role: ${req.user?.role}`);
-    
+export const adminOnly = (req, res, next) => {    
     if (req.user && req.user.role === 'admin') {
-        console.log('✅ [AdminCheck] Access granted - User is admin');
+        console.log('[AdminCheck] Access granted - User is admin');
         next();
     } else {
-        console.log(`❌ [AdminCheck] Access DENIED - User is ${req.user?.role || 'not authenticated'}`);
+        console.log(`[AdminCheck] Access DENIED - User is ${req.user?.role || 'not authenticated'}`);
         res.status(403).json({
             success: false,
             message: 'Access denied. Admin only.'

@@ -36,7 +36,6 @@ export const useSprayRealtime = (machineId) => {
             const result = await getSprayWeeklyData(machineId);
             
             if (result.success && result.data) {
-                console.log('✅ [useSprayRealtime] Weekly data from API:', result.data);
                 setWeeklyData(result.data);
                 setError(null);
             } else {
@@ -54,7 +53,6 @@ export const useSprayRealtime = (machineId) => {
             const result = await getSprayRealtimeData(machineId);
             
             if (result.success && result.data) {
-                console.log('✅ [useSprayRealtime] Realtime data from API:', result.data);
                 setRealtimeData(result.data);
                 setIsConnected(result.data.isConnected || false);
                 setError(null);
@@ -76,7 +74,6 @@ export const useSprayRealtime = (machineId) => {
             const result = await getSprayDailyData(machineId);
             
             if (result.success && result.data) {
-                console.log('✅ [useSprayRealtime] Daily data from API:', result.data);
                 setDailyData(result.data);
                 setError(null);
             } else {
@@ -96,7 +93,6 @@ export const useSprayRealtime = (machineId) => {
             const result = await getSprayPieChartData(machineId);
             
             if (result.success && result.data) {
-                console.log('✅ [useSprayRealtime] Pie chart data from API:', result.data);
                 setPieChartData(result.data);
                 setError(null);
             } else {
@@ -116,7 +112,6 @@ export const useSprayRealtime = (machineId) => {
             const result = await getSprayStatistics(machineId);
             
             if (result.success && result.data) {
-                console.log('✅ [useSprayRealtime] Statistics from API:', result.data);
                 setStatistics(result.data);
                 setError(null);
             } else {
@@ -136,7 +131,6 @@ export const useSprayRealtime = (machineId) => {
             const result = await getSpray30DaysHistory(machineId);
             
             if (result.success && result.data) {
-                console.log('✅ [useSprayRealtime] History data from API:', result.data);
                 setHistoryData(result.data);
                 setError(null);
             } else {
@@ -156,7 +150,6 @@ export const useSprayRealtime = (machineId) => {
         setError(null);
         
         try {
-            console.log(`🔄 [useSprayRealtime] Initial fetch all data for: ${machineId}`);
             
             await Promise.all([
                 fetchRealtimeData(),
@@ -167,21 +160,19 @@ export const useSprayRealtime = (machineId) => {
                 fetchWeeklyData()
             ]);
             
-            console.log('✅ [useSprayRealtime] All data loaded successfully');
         } catch (err) {
             console.error('❌ [useSprayRealtime] Error fetching all data:', err);
             setError(err.message || 'Lỗi tải dữ liệu');
         } finally {
             setLoading(false);
         }
-    }, [machineId, fetchRealtimeData, fetchDailyData, fetchPieChartData, fetchStatistics, fetchHistoryData, fetchWeeklyData]);
+    }, [fetchRealtimeData, fetchDailyData, fetchPieChartData, fetchStatistics, fetchHistoryData, fetchWeeklyData]);
     
     /**
      * Update realtime data from socket event
      * Called by SprayMachinePage when socket emits 'spray:data-update'
      */
     const updateRealtimeFromSocket = useCallback((socketData) => {
-        console.log('📡 [useSprayRealtime] Update from socket:', socketData);
         
         if (!socketData) return;
         

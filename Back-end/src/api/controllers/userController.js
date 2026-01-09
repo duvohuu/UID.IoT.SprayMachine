@@ -273,7 +273,7 @@ export const createUser = async (req, res) => {
             user: user.toJSON()
         });
 
-        console.log(`✅ User created: ${username} (${userId})`);
+        console.log(`User created: ${username} (${userId})`);
     } catch (error) {
         console.error('Create user error:', error);
         res.status(500).json({
@@ -317,7 +317,7 @@ export const updateUser = async (req, res) => {
             user: user.toJSON()
         });
 
-        console.log(`✅ User updated: ${user.username} (${user.userId})`);
+        console.log(`User updated: ${user.username} (${user.userId})`);
     } catch (error) {
         console.error('Update user error:', error);
         res.status(500).json({
@@ -348,7 +348,7 @@ export const deleteUser = async (req, res) => {
             message: 'User deleted successfully'
         });
 
-        console.log(`✅ User deleted: ${user.username} (${user.userId})`);
+        console.log(`User deleted: ${user.username} (${user.userId})`);
     } catch (error) {
         console.error('Delete user error:', error);
         res.status(500).json({

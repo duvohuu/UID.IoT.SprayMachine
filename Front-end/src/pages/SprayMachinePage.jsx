@@ -68,7 +68,7 @@ const SprayMachinePage = () => {
      * Handle machine status update (connection, online/offline)
      */
     const handleMachineUpdate = useCallback((update) => {
-        console.log(`📡 [${machine?.name}] Machine status update:`, update);
+        console.log(`[${machine?.name}] Machine status update:`, update);
         
         setMachineRealtime(prevMachine => ({
             ...prevMachine,
@@ -84,7 +84,7 @@ const SprayMachinePage = () => {
      * Gọi updateRealtimeFromSocket thay vì fetch API
      */
     const handleRealtimeUpdate = useCallback((socketData) => {
-        console.log(`📡 [${machine?.name}] Realtime data update:`, socketData);
+        console.log(`[${machine?.name}] Realtime data update:`, socketData);
         updateRealtimeFromSocket(socketData);
     }, [machine, updateRealtimeFromSocket]);
 
@@ -92,7 +92,7 @@ const SprayMachinePage = () => {
      * Handle daily reset at 6AM
      */
     const handleDailyReset = useCallback(() => {
-        console.log(`🌅 [${machine?.name}] Daily data reset at 6AM`);
+        console.log(`[${machine?.name}] Daily data reset at 6AM`);
         
         // Fetch lại toàn bộ data vì đã reset
         refreshAllData();
@@ -112,13 +112,13 @@ const SprayMachinePage = () => {
     useEffect(() => {
         if (machine) {
             setMachineRealtime(machine);
-            console.log('📊 [SprayMachinePage] Machine loaded:', machine.name);
+            console.log('[SprayMachinePage] Machine loaded:', machine.name);
         }
     }, [machine]);
 
     useEffect(() => {
         if (realtimeData) {
-            console.log('🔄 [SprayMachinePage] Realtime data updated:', {
+            console.log('[SprayMachinePage] Realtime data updated:', {
                 status: realtimeData.sprayStatus,
                 activeTime: realtimeData.activeTime,
                 stopTime: realtimeData.stopTime,

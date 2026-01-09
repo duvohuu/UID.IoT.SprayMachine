@@ -13,7 +13,6 @@ const loginUser = async (email, password) => {
             password,
         });
         
-        // Back-end returns: { success, message, user: {...}, accessToken }
         const { user, accessToken } = res.data;
         
         const userData = {

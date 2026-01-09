@@ -37,7 +37,7 @@ let mqttClient = null;
 const processMQTTMessage = async (data) => {
     const { machineId, status, powerConsumption } = data;
 
-    console.log(`\n📨 [MQTT] Processing message for: ${machineId}`);
+    console.log(`\n [MQTT] Processing message for: ${machineId}`);
     console.log(`   Status: ${status} ${status === 1 ? '▶️  Running' : '⏸️  Stopped'}`);
     console.log(`   Power: ${powerConsumption.toFixed(3)} kWh`);
 
@@ -53,16 +53,15 @@ const processMQTTMessage = async (data) => {
 
         // Check if message was ignored (outside work shift)
         if (!updatedData) {
-            console.log(`✅ [MQTT] Message ignored (outside work shift) for ${machineId}`);
+            console.log(`MQTT] Message ignored (outside work shift) for ${machineId}`);
             return null;
         }
 
-        console.log(`✅ [MQTT] Data processed successfully for ${machineId}`);
+        console.log(`MQTT] Data processed successfully for ${machineId}`);
 
         // Step 3: Update Machine model status (from machineService)
         const machineStatus = status === 1 ? 'online' : 'offline';
         await updateMachineConnectionStatus(machineId, true, machineStatus);
-        console.log(`💾 [MQTT] Updated Machine: status=${machineStatus}, isConnected=true`);
 
         // Return processed result for socket emission
         return {
@@ -72,7 +71,7 @@ const processMQTTMessage = async (data) => {
         };
 
     } catch (error) {
-        console.error(`❌ [MQTT] Error processing message for ${machineId}:`, error.message);
+        console.error(`[MQTT] Error processing message for ${machineId}:`, error.message);
         throw error;
     }
 };
@@ -119,10 +118,10 @@ const emitSocketEvents = (result) => {
         // Emit machine status update
         io.emit('machine:status-update', statusUpdate);
 
-        console.log(`📤 [Socket] Emitted updates for ${updatedData.machineId}`);
+        console.log(`[Socket] Emitted updates for ${updatedData.machineId}`);
 
     } catch (socketError) {
-        console.error(`⚠️  [Socket] Error emitting update:`, socketError.message);
+        console.error(`[Socket] Error emitting update:`, socketError.message);
     }
 };
 
@@ -133,9 +132,8 @@ const emitSocketEvents = (result) => {
  * Khởi tạo kết nối MQTT và đăng ký event handlers
  */
 export const initializeMQTT = () => {
-    console.log('🔌 Initializing MQTT Client...');
-    console.log(`📡 Broker: ${MQTT_CONFIG.broker}:${MQTT_CONFIG.port}`);
-    console.log(`📨 Topic: ${MQTT_CONFIG.topic}`);
+    console.log(`Broker: ${MQTT_CONFIG.broker}:${MQTT_CONFIG.port}`);
+    console.log(`Topic: ${MQTT_CONFIG.topic}`);
 
     mqttClient = mqtt.connect(MQTT_CONFIG.broker, {
         port: MQTT_CONFIG.port,
@@ -148,31 +146,31 @@ export const initializeMQTT = () => {
     // ==================== CONNECTION EVENTS ====================
 
     mqttClient.on('connect', () => {
-        console.log('✅ MQTT Connected successfully');
+        console.log('MQTT Connected successfully');
         
         mqttClient.subscribe(MQTT_CONFIG.topic, (err) => {
             if (err) {
-                console.error('❌ MQTT Subscribe Error:', err);
+                console.error('MQTT Subscribe Error:', err);
             } else {
-                console.log(`📬 Subscribed to topic: ${MQTT_CONFIG.topic}`);
+                console.log(`Subscribed to topic: ${MQTT_CONFIG.topic}`);
             }
         });
     });
 
     mqttClient.on('error', (error) => {
-        console.error('❌ MQTT Connection Error:', error);
+        console.error('MQTT Connection Error:', error);
     });
 
     mqttClient.on('offline', () => {
-        console.log('⚠️ MQTT Client is offline');
+        console.log('MQTT Client is offline');
     });
 
     mqttClient.on('reconnect', () => {
-        console.log('🔄 MQTT Reconnecting...');
+        console.log('MQTT Reconnecting...');
     });
 
     mqttClient.on('close', () => {
-        console.log('🔌 MQTT Connection closed');
+        console.log('MQTT Connection closed');
     });
 
     // ==================== MESSAGE HANDLER ====================
@@ -210,21 +208,21 @@ export const initializeMQTT = () => {
  */
 export const publishMQTT = (topic, message) => {
     if (!mqttClient || !mqttClient.connected) {
-        console.error('❌ MQTT Client not connected');
+        console.error('MQTT Client not connected');
         return false;
     }
 
     try {
         mqttClient.publish(topic, JSON.stringify(message), { qos: 1 }, (err) => {
             if (err) {
-                console.error('❌ MQTT Publish Error:', err);
+                console.error('MQTT Publish Error:', err);
             } else {
-                console.log(`📤 [MQTT] Published to ${topic}:`, message);
+                console.log(`[MQTT] Published to ${topic}:`, message);
             }
         });
         return true;
     } catch (error) {
-        console.error('❌ MQTT Publish Exception:', error);
+        console.error('MQTT Publish Exception:', error);
         return false;
     }
 };
@@ -236,7 +234,7 @@ export const publishMQTT = (topic, message) => {
 export const disconnectMQTT = () => {
     if (mqttClient) {
         mqttClient.end();
-        console.log('🔌 MQTT Client disconnected');
+        console.log('MQTT Client disconnected');
     }
 };
 

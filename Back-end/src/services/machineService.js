@@ -155,7 +155,7 @@ export const createMachine = async (machineData, requestUserId) => {
         isConnected: false
     });
     
-    console.log(`✅ Machine created: ${name} (${machineId})`);
+    console.log(`Machine created: ${name} (${machineId})`);
     
     return machine;
 };
@@ -198,26 +198,19 @@ export const updateMachine = async (id, updateData) => {
     if (!machine) {
         throw new Error('Machine not found');
     }
-    
-    console.log(`✅ Machine updated: ${machine.name} (${machine.machineId})`);
-    
+        
     return machine;
 };
 
 /**
  * Delete machine with cleanup
  */
-export const deleteMachine = async (id) => {
-    console.log(`🗑️ Attempting to delete machine with ID: ${id}`);
-    
+export const deleteMachine = async (id) => {    
     let machine;
     
     // Try deleting by MongoDB _id first
     if (mongoose.Types.ObjectId.isValid(id)) {
-        console.log('   ✅ Valid ObjectId format');
-        const existingMachine = await Machine.findById(id);
-        console.log(`   Machine exists in DB? ${existingMachine ? 'YES' : 'NO'}`);
-        
+        const existingMachine = await Machine.findById(id);        
         if (existingMachine) {
             console.log(`   Found machine: ${existingMachine.name} (${existingMachine.machineId})`);
             // Cleanup related data
@@ -242,13 +235,13 @@ export const deleteMachine = async (id) => {
     }
     
     if (!machine) {
-        console.log('   ❌ Machine not found in database');
+        console.log('   Machine not found in database');
         const totalCount = await Machine.countDocuments();
         console.log(`   Total machines in DB: ${totalCount}`);
         throw new Error('Machine not found');
     }
     
-    console.log(`✅ Machine deleted: ${machine.name} (${machine.machineId})`);
+    console.log(`Machine deleted: ${machine.name} (${machine.machineId})`);
     
     return machine;
 };
@@ -295,7 +288,7 @@ export const updateMachineConnectionStatus = async (machineId, isConnected, mach
         throw new Error(`Machine ${machineId} not found`);
     }
     
-    console.log(`🔌 Machine ${machineId} connection status: ${isConnected ? 'CONNECTED' : 'DISCONNECTED'}`);
+    console.log(`Machine ${machineId} connection status: ${isConnected ? 'CONNECTED' : 'DISCONNECTED'}`);
     
     return machine;
 };
