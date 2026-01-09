@@ -40,8 +40,8 @@ const useAuth = (setUser, socket) => {
                 
                 showSnackbar("Đăng nhập thành công", "success");
                 
-                // Điều hướng về trang status
-                navigate("/status", { replace: true });
+                // Điều hướng về trang overview
+                navigate("/overview", { replace: true });
                 
             } else {
                 showSnackbar(res.message || "Đăng nhập thất bại", "error");
@@ -70,7 +70,7 @@ const useAuth = (setUser, socket) => {
             }
             
             showSnackbar("Đăng xuất thành công", "success");
-            navigate("/status", { replace: true });
+            navigate("/overview", { replace: true });
             
         } catch (error) {
             console.error("Lỗi khi đăng xuất:", error);

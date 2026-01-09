@@ -11,7 +11,7 @@ const MachineHeader = () => {
             <Button
                 variant="outlined"
                 startIcon={<ArrowBack />}
-                onClick={() => navigate('/status')}
+                onClick={() => navigate('/overview')}
             >
                 Quay lại
             </Button>

@@ -9,15 +9,15 @@ import { useTheme } from '@mui/material/styles';
 import { useNavigate } from 'react-router-dom';
 
 // Import components
-import StatusHeader from '../components/status/StatusHeader';
-import StatusStatsCards from '../components/status/StatusStatsCards';
-import StatusMachinesGrid from '../components/status/StatusMachinesGrid';
+import OverviewPageHeader from '../components/overview/OverviewPageHeader';
+import OverviewPageStatsCards from '../components/overview/OverviewPageStatsCards';
+import OverviewPageMachinesGrid from '../components/overview/OverviewPageMachinesGrid';
 
 // Import API and hooks
 import { getMachines } from '../api/machineAPI';
 import { useAllMachinesStatusUpdates } from '../hooks/useSocketEvents';
 
-const StatusPage = ({ user }) => {
+const OverviewPage = ({ user }) => {
     const theme = useTheme();
     const navigate = useNavigate();
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -160,13 +160,13 @@ const StatusPage = ({ user }) => {
         >
             <Container maxWidth="xl">
                 {/* Header */}
-                <StatusHeader isMobile={isMobile} error={error} user={user} />
+                <OverviewPageHeader isMobile={isMobile} error={error} user={user} />
 
                 {/* Stats Cards */}
-                <StatusStatsCards machines={machines} loading={loading} />
+                <OverviewPageStatsCards machines={machines} loading={loading} />
 
                 {/* Machines Grid */}
-                <StatusMachinesGrid 
+                <OverviewPageMachinesGrid 
                     machines={machines}
                     loading={loading}
                     error={error}
@@ -179,4 +179,4 @@ const StatusPage = ({ user }) => {
     );
 };
 
-export default StatusPage;
+export default OverviewPage;
