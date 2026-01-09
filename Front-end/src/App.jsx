@@ -4,8 +4,8 @@ import { Box, Toolbar, CssBaseline, ThemeProvider } from '@mui/material';
 import { getTheme } from './theme';
 import Header from './components/header/Header';
 import Sidebar from './components/layout/Sidebar';
-import Breadcrumb from './components/common/Breadcrumb'; 
-import StatusPage from './pages/StatusPage';
+import Breadcrumb from './components/layout/Breadcrumb'; 
+import OverviewPage from './pages/OverviewPage';
 import SettingPage from './pages/SettingPage';
 import SprayMachinePage from './pages/SprayMachinePage'; 
 import { SnackbarProvider } from './context/SnackbarContext';
@@ -124,8 +124,8 @@ const App = () => {
                                 overflowY: 'auto' // Cho phép scroll
                             }}>
                                 <Routes>
-                                    <Route path="/" element={<Navigate to="/status" replace />} />
-                                    <Route path="/status" element={<StatusPage user={user} />} />
+                                    <Route path="/" element={<Navigate to="/overview" replace />} />
+                                    <Route path="/overview" element={<OverviewPage user={user} />} />
                                     <Route path="/setting" element={<SettingPage user={user} mode={mode} setMode={setMode} />} />
                                     <Route path="/spray/:machineId" element={<SprayMachinePage user={user} />} />
                                 </Routes>

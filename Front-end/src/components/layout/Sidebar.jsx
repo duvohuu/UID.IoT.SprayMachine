@@ -20,8 +20,8 @@ const collapsedWidth = 80;
 
 const menuItems = [
     { 
-        label: 'Trạng thái', 
-        path: '/status/', 
+        label: 'Tổng quan', 
+        path: '/overview/', 
         icon: <StatusIcon />,
         description: 'Theo dõi tình trạng hệ thống'
     },

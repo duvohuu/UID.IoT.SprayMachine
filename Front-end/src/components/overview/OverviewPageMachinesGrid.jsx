@@ -16,11 +16,11 @@ import {
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import { Delete as DeleteIcon, Close as CloseIcon } from '@mui/icons-material';
-import MachineStatusCard from '../machine/MachineStatusCard'; 
+import MachineStatusCard from '../overview/MachineStatusCard'; 
 import { useSnackbar } from '../../context/SnackbarContext';
 import { deleteMachine } from '../../api/machineAPI'; 
 
-const StatusMachinesGrid = ({ machines, loading, user, onMachineClick, onMachineDelete }) => {
+const OverviewPageMachinesGrid = ({ machines, loading, user, onMachineClick, onMachineDelete }) => {
     const theme = useTheme();
     const { showSnackbar } = useSnackbar();
     const [deleteDialog, setDeleteDialog] = useState({ open: false, machine: null });
@@ -252,4 +252,4 @@ const StatusMachinesGrid = ({ machines, loading, user, onMachineClick, onMachine
     );
 };
 
-export default StatusMachinesGrid;
+export default OverviewPageMachinesGrid;

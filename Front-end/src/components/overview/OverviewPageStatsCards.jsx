@@ -9,7 +9,7 @@ import {
     TrendingUp as TrendIcon
 } from '@mui/icons-material';
 
-const StatusStatsCards = ({ machines, loading }) => {
+const OverviewPageStatsCards = ({ machines, loading }) => {
     const theme = useTheme();
 
     // Tính toán stats từ machines data
@@ -237,4 +237,4 @@ const StatusStatsCards = ({ machines, loading }) => {
     );
 };
 
-export default StatusStatsCards;
+export default OverviewPageStatsCards;

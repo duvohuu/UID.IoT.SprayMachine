@@ -19,7 +19,7 @@ import AvatarMenu from "../header/AvatarMenu";
 import NotificationBell from "../header/NotificationBell"
 import useAuth from "../../hooks/useAuth";
 import { useSocket } from "../../context/SocketContext";
-import { API_URL } from '../../config/apiConfig.js';
+import { API_URL, getAvatarUrl } from '../../config/apiConfig.js';
 
 
 const Search = styled("div")(({ theme }) => ({
@@ -235,7 +235,7 @@ const Header = ({ onToggleSidebar, user, setUser }) => {
         setAnchorEl(null);
     };
 
-    const avatarSrc = user?.avatar ? `${API_URL}${user.avatar}` : undefined;
+    const avatarSrc = getAvatarUrl(user?.avatar);  
 
     return (
         <>

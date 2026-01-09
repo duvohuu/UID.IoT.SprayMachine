@@ -11,8 +11,6 @@ const loginUser = async (email, password) => {
         const res = await axios.post(`${import.meta.env.VITE_API_URL}/api/auth/login`, {
             email,
             password,
-        }, {
-            withCredentials: true
         });
         
         // Back-end returns: { success, message, user: {...}, accessToken }

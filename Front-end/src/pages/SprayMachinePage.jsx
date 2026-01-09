@@ -14,7 +14,6 @@ import {
     Collapse
 } from '@mui/material';
 import { 
-    ArrowBack, 
     ExpandMore as ExpandMoreIcon, 
     ExpandLess as ExpandLessIcon 
 } from '@mui/icons-material';
@@ -25,8 +24,8 @@ import { useSprayRealtime } from '../hooks/useSprayRealtime';
 import { useMachineSocketEvents } from '../hooks/useSocketEvents';
 
 // Import components
-import MachineHeader from '../components/machine/MachineHeader';
-import MachineFooter from '../components/machine/MachineFooter';
+import MachineHeader from '../components/common/MachineHeader';
+import MachineFooter from '../components/common/MachineFooter';
 import SprayMachinePanel from '../components/sprayMachine/SprayMachinePanel';
 import SprayMachineDataDisplay from '../components/sprayMachine/SprayMachineDataDisplay';
 
@@ -161,7 +160,7 @@ const SprayMachinePage = () => {
                         <Button 
                             color="inherit" 
                             size="small" 
-                            onClick={() => navigate('/status')}
+                            onClick={() => navigate('/overview')}
                         >
                             Quay lại
                         </Button>

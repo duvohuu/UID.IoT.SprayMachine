@@ -191,10 +191,6 @@ const NotificationBell = ({ user }) => {
             Notification.requestPermission();
         }
     }, [user]);
-
-    // XÓA: Polling logic (setInterval)
-    // XÓA: const interval = setInterval(fetchNotifications, 30000);
-
     // Mark notifications as read
     const markAsRead = async (notificationId) => {
         try {

@@ -52,7 +52,7 @@ const PartnershipBadge = styled(Box)(({ theme }) => ({
     },
 }));
 
-const StatusHeader = ({ isMobile, error, user }) => {
+const OverviewPageHeader = ({ isMobile, error, user }) => {
     const theme = useTheme();
     const isAdmin = user?.role === 'admin';
 
@@ -193,4 +193,4 @@ const StatusHeader = ({ isMobile, error, user }) => {
     );
 };
 
-export default StatusHeader;
+export default OverviewPageHeader;

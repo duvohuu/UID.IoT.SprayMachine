@@ -11,17 +11,10 @@ const MachineHeader = () => {
             <Button
                 variant="outlined"
                 startIcon={<ArrowBack />}
-                onClick={() => navigate('/status')}
+                onClick={() => navigate('/overview')}
             >
                 Quay lại
             </Button>
-            {/* <Typography variant="h4" sx={{ fontWeight: 700 }}>
-                {machine.name}
-            </Typography>
-            <Chip 
-                label={machine.isConnected ? 'Đã kết nối' : 'Mất kết nối'} 
-                color={machine.isConnected ? 'success' : 'error'} 
-            /> */}
         </Box>
     );
 };

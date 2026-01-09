@@ -32,13 +32,12 @@ const Breadcrumb = () => {
 
     // Map routes to breadcrumb config
     const getBreadcrumbConfig = () => {
-        // ✅ Normalize path: remove trailing slash
         const path = location.pathname.replace(/\/$/, '') || '/';
 
-        // Status Page (Home)
-        if (path === '/status' || path === '') {
+        // Overview Page (Home)
+        if (path === '/overview' || path === '') {
             return [
-                { label: 'IOT-Dashboard', icon: <DashboardIcon />, to: '/status' }, 
+                { label: 'IOT-Dashboard', icon: <DashboardIcon />, to: '/overview' }, 
                 { label: 'Home', icon: <HomeIcon />, active: true } 
             ];
         }
@@ -46,7 +45,7 @@ const Breadcrumb = () => {
         // Setting Page
         if (path === '/setting') {
             return [
-                { label: 'IOT-Dashboard', icon: <DashboardIcon />, to: '/status' }, 
+                { label: 'IOT-Dashboard', icon: <DashboardIcon />, to: '/overview' }, 
                 { label: 'Setting', icon: <SettingsIcon />, active: true } 
             ];
         }
@@ -55,8 +54,8 @@ const Breadcrumb = () => {
         if (path.startsWith('/spray/')) {
             const machineId = path.split('/')[2];
             return [
-                { label: 'IOT-Dashboard', icon: <DashboardIcon />, to: '/status' },
-                { label: 'Home', icon: <HomeIcon />, to: '/status' }, 
+                { label: 'IOT-Dashboard', icon: <DashboardIcon />, to: '/overview' },
+                { label: 'Home', icon: <HomeIcon />, to: '/overview' }, 
                 { label: `Spray Machine (${machineId})`, icon: <SprayIcon />, active: true } 
             ];
         }
@@ -65,8 +64,8 @@ const Breadcrumb = () => {
         if (path.startsWith('/cnc/')) {
             const machineId = path.split('/')[2];
             return [
-                { label: 'IOT-Dashboard', icon: <DashboardIcon />, to: '/status' },
-                { label: 'Home', icon: <HomeIcon />, to: '/status' },
+                { label: 'IOT-Dashboard', icon: <DashboardIcon />, to: '/overview' },
+                { label: 'Home', icon: <HomeIcon />, to: '/overview' },
                 { label: `CNC Machine (${machineId})`, icon: <CNCIcon />, active: true }
             ];
         }
@@ -75,8 +74,8 @@ const Breadcrumb = () => {
         if (path.startsWith('/powder/')) {
             const machineId = path.split('/')[2];
             return [
-                { label: 'IOT-Dashboard', icon: <DashboardIcon />, to: '/status' },
-                { label: 'Home', icon: <HomeIcon />, to: '/status' },
+                { label: 'IOT-Dashboard', icon: <DashboardIcon />, to: '/overview' },
+                { label: 'Home', icon: <HomeIcon />, to: '/overview' },
                 { label: `Powder Machine (${machineId})`, icon: <PowderIcon />, active: true }
             ];
         }
@@ -85,15 +84,15 @@ const Breadcrumb = () => {
         if (path.startsWith('/salt/')) {
             const machineId = path.split('/')[2];
             return [
-                { label: 'IOT-Dashboard', icon: <DashboardIcon />, to: '/status' },
-                { label: 'Home', icon: <HomeIcon />, to: '/status' },
+                { label: 'IOT-Dashboard', icon: <DashboardIcon />, to: '/overview' },
+                { label: 'Home', icon: <HomeIcon />, to: '/overview' },
                 { label: `Salt Machine (${machineId})`, icon: <SaltIcon />, active: true }
             ];
         }
 
         // Default
         return [
-            { label: 'IOT-Dashboard', icon: <DashboardIcon />, to: '/status' }
+            { label: 'IOT-Dashboard', icon: <DashboardIcon />, to: '/overview' }
         ];
     };
 
