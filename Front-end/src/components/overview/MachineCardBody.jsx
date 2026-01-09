@@ -65,7 +65,7 @@ const MachineCardBody = ({ machine, statusColor, statusText, statusBgColor, isCo
                                     transform: 'scale(1)',
                                 },
                                 '50%': {
-                                    boxShadow: `0 12px 40px ${theme.palette.primary.main}80, 0 0 20px ${theme.palette.primary.main}40`,
+                                    boxShadow: `0 24px 40px ${theme.palette.primary.main}80, 0 0 20px ${theme.palette.primary.main}40`,
                                     transform: 'scale(1.05)',
                                 },
                                 '100%': {
