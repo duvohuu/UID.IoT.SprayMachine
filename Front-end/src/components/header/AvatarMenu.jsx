@@ -21,7 +21,7 @@ import { styled, alpha } from "@mui/material/styles";
 import axios from "axios";
 import ChangePasswordDialog from "./ChangePasswordDialog";
 import { useSnackbar } from "../../context/SnackbarContext";
-import { API_URL } from '../../config/apiConfig.js';
+import { API_URL, getAvatarUrl } from '../../config/apiConfig.js';
 
 
 // Enhanced Menu with glassmorphism
@@ -278,11 +278,8 @@ const AvatarMenu = ({ anchorEl, onClose, user, setUser, onLogout }) => {
         onClose();
     };
 
-    const avatarSrc = user?.avatar 
-        ? (user.avatar.startsWith('http') 
-            ? user.avatar 
-            : `${API_URL}${user.avatar}`)
-        : undefined;
+    const avatarSrc = getAvatarUrl(user?.avatar); 
+
 
     return (
         <>

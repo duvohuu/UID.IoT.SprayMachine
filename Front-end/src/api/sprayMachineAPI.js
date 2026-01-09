@@ -19,7 +19,6 @@ export const getSprayRealtimeData = async (machineId) => {
     try {
         const response = await axios.get(
             `${API_URL}/api/spray-machine/realtime/${machineId}`, 
-            { withCredentials: true }
         );
         return { success: true, data: response.data };
     } catch (err) {
@@ -41,7 +40,6 @@ export const getSprayDailyData = async (machineId) => {
     try {
         const response = await axios.get(
             `${API_URL}/api/spray-machine/daily/${machineId}`, 
-            { withCredentials: true }
         );
         return { success: true, data: response.data };
     } catch (err) {
@@ -73,7 +71,6 @@ export const getSpray30DaysHistory = async (machineId, params = {}) => {
 
         const response = await axios.get(
             `${API_URL}/api/spray-machine/history/${machineId}?${queryParams}`, 
-            { withCredentials: true }
         );
         return { success: true, data: response.data };
     } catch (err) {
@@ -99,7 +96,6 @@ export const getSprayStatistics = async (machineId) => {
     try {
         const response = await axios.get(
             `${API_URL}/api/spray-machine/statistics/${machineId}`, 
-            { withCredentials: true }
         );
         return { success: true, data: response.data };
     } catch (err) {
@@ -120,7 +116,6 @@ export const getSprayPieChartData = async (machineId) => {
     try {
         const response = await axios.get(
             `${API_URL}/api/spray-machine/pie-chart/${machineId}`, 
-            { withCredentials: true }
         );
         return { success: true, data: response.data };
     } catch (err) {
