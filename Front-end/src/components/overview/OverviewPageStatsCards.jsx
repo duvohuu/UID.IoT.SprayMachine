@@ -44,7 +44,6 @@ const OverviewPageStatsCards = ({ machines, loading }) => {
 
     const stats = calculateStats(machines);
 
-    // Component StatCard - THÊM COMPONENT NÀY
     const StatCard = ({ title, value, icon, color, bgColor, percentage, description }) => (
         <Paper
             sx={{
@@ -176,7 +175,7 @@ const OverviewPageStatsCards = ({ machines, loading }) => {
             description: `${stats.onlinePercentage}% máy đang online`
         },
         {
-            title: 'Mất Kết Nối',
+            title: 'Đang Dừng',
             value: stats.offline,
             icon: <OfflineIcon />,
             color: theme.palette.error.main,
