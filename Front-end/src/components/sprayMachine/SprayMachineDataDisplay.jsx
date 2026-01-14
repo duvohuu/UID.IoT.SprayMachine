@@ -33,11 +33,30 @@ ChartJS.register(
 
 const SprayMachineDataDisplay = ({ dailyData, statistics, weeklyData, loading, error }) => {
 
+    // ==================== HELPER: CONVERT HOURS TO HH:MM ====================
+    const formatHoursToTime = (hours) => {
+        if (!hours || hours === 0) return '0h 0m';
+        const h = Math.floor(hours);
+        const m = Math.round((hours - h) * 60);
+        return `${h}h ${m}m`;
+    };
+
     // ==================== STAT CARD COMPONENT ====================
     const StatCard = ({ config, value }) => {
-        const displayValue = value !== null && value !== undefined 
-            ? (typeof value === 'number' ? value.toFixed(config.decimals || 0) : value)
-            : 'N/A';
+        let displayValue = 'N/A';
+        
+        if (value !== null && value !== undefined) {
+            // Nếu là thời gian (operatingTime, pausedTime), format sang giờ:phút
+            if (config.key === 'operatingTime' || config.key === 'pausedTime' || 
+                config.key === 'totalOperatingTime') {
+                displayValue = formatHoursToTime(value);
+            } else {
+                displayValue = typeof value === 'number' 
+                    ? value.toFixed(config.decimals || 0) 
+                    : value;
+                displayValue = `${displayValue} ${config.unit || ''}`;
+            }
+        }
 
         return (
             <Card sx={{ height: '100%' }}>
@@ -62,7 +81,7 @@ const SprayMachineDataDisplay = ({ dailyData, statistics, weeklyData, loading, e
                             mb: 1
                         }}
                     >
-                        {displayValue} {config.unit}
+                        {displayValue}
                     </Typography>
                     <Typography variant="caption" color="text.secondary">
                         {config.description}
@@ -159,7 +178,7 @@ const SprayMachineDataDisplay = ({ dailyData, statistics, weeklyData, loading, e
                         const value = context.parsed || 0;
                         const total = context.dataset.data.reduce((a, b) => a + b, 0);
                         const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
-                        return `${label}: ${value.toFixed(2)}h (${percentage}%)`;
+                        return `${label}: ${formatHoursToTime(value)} (${percentage}%)`;
                     }
                 }
             }
@@ -214,7 +233,7 @@ const SprayMachineDataDisplay = ({ dailyData, statistics, weeklyData, loading, e
             tooltip: {
                 callbacks: {
                     label: (context) => {
-                        return `${context.dataset.label}: ${context.parsed.y.toFixed(2)} giờ`;
+                        return `${context.dataset.label}: ${formatHoursToTime(context.parsed.y)}`;
                     }
                 }
             }
@@ -254,7 +273,7 @@ const SprayMachineDataDisplay = ({ dailyData, statistics, weeklyData, loading, e
                     <Box sx={{ mt: 2, p: 2, bgcolor: 'background.default', borderRadius: 1 }}>
                         <Typography variant="body2" color="text.secondary" align="center">
                             💡 Hiệu suất: <strong>{dailyData.efficiency || 0}%</strong> 
-                            {' '}({dailyData.operatingTime || 0}h / 12h)
+                            {' '}({formatHoursToTime(dailyData.operatingTime || 0)} / 12h)
                         </Typography>
                     </Box>
                 </CardContent>
