@@ -148,6 +148,37 @@ export const getSprayWeeklyData = async (req, res) => {
 };
 
 /**
+ * GET /api/spray-machine/monthly/:machineId
+ */
+export const getSprayMonthlyData = async (req, res) => {
+    try {
+        const { machineId } = req.params;
+        console.log(`📊 [Controller] GET Monthly data for: ${machineId}`);
+        
+        const monthlyData = await SprayMachineService.getCurrentMonthData(machineId);
+        
+        const formattedData = monthlyData.map(day => ({
+            date: day.date,
+            day: day.day,
+            dayOfWeek: day.dayOfWeek,
+            operatingTime: parseFloat(day.activeTime.toFixed(2)),
+            pausedTime: parseFloat(day.stopTime.toFixed(2)),
+            energyConsumption: parseFloat(day.totalEnergyConsumed.toFixed(3))
+        }));
+        
+        res.json(formattedData);
+        
+    } catch (error) {
+        console.error('❌ [Controller] Monthly Error:', error);
+        res.status(500).json({ 
+            success: false,
+            message: 'Error fetching spray monthly data', 
+            error: error.message 
+        });
+    }
+};
+
+/**
  * GET /api/spray-machine/statistics/:machineId
  */
 export const getSprayStatistics = async (req, res) => {

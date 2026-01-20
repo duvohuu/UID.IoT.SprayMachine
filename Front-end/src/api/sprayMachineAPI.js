@@ -149,6 +149,28 @@ export const getSprayWeeklyData = async (machineId) => {
 };
 
 /**
+ * Lấy dữ liệu tháng hiện tại (all days in month)
+ * @param {string} machineId - ID của máy
+ * @returns {Promise<{success: boolean, data?: any, message?: string}>}
+ */
+export const getSprayMonthlyData = async (machineId) => {
+    try {
+        const response = await axios.get(
+            `${API_URL}/api/spray-machine/monthly/${machineId}`, 
+            { withCredentials: true }
+        );
+        return { success: true, data: response.data };
+    } catch (err) {
+        console.error('❌ Error fetching spray monthly data:', err);
+        return { 
+            success: false, 
+            message: err.response?.data?.message || "Lỗi lấy dữ liệu tháng Spray Machine" 
+        };
+    }
+};
+
+
+/**
  * ========================================
  * EXPORT ALL FUNCTIONS
  * ========================================
@@ -159,5 +181,6 @@ export default {
     getSpray30DaysHistory,
     getSprayStatistics,
     getSprayWeeklyData,
+    getSprayMonthlyData, 
     getSprayPieChartData,
 };

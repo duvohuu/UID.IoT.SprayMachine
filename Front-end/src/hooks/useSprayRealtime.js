@@ -5,7 +5,8 @@ import {
     getSprayStatistics, 
     getSpray30DaysHistory,
     getSprayPieChartData,
-    getSprayWeeklyData
+    getSprayWeeklyData,
+    getSprayMonthlyData
 } from '../api/sprayMachineAPI';
 
 /**
@@ -23,6 +24,7 @@ export const useSprayRealtime = (machineId) => {
     const [pieChartData, setPieChartData] = useState(null);
     const [historyData, setHistoryData] = useState([]);
     const [weeklyData, setWeeklyData] = useState([]);
+    const [monthlyData, setMonthlyData] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [isConnected, setIsConnected] = useState(false);
@@ -43,6 +45,23 @@ export const useSprayRealtime = (machineId) => {
             }
         } catch (err) {
             console.error('❌ [useSprayRealtime] Weekly data error:', err);
+        }
+    }, [machineId]);
+
+    const fetchMonthlyData = useCallback(async () => {
+        if (!machineId) return;
+        
+        try {
+            const result = await getSprayMonthlyData(machineId);
+            
+            if (result.success && result.data) {
+                setMonthlyData(result.data);
+                setError(null);
+            } else {
+                console.error('❌ [useSprayRealtime] Monthly data failed:', result.message);
+            }
+        } catch (err) {
+            console.error('❌ [useSprayRealtime] Monthly data error:', err);
         }
     }, [machineId]);
 
@@ -148,14 +167,14 @@ export const useSprayRealtime = (machineId) => {
         setError(null);
         
         try {
-            
             await Promise.all([
                 fetchRealtimeData(),
                 fetchDailyData(),
                 fetchPieChartData(),
                 fetchStatistics(),
                 fetchHistoryData(),
-                fetchWeeklyData()
+                fetchWeeklyData(),
+                fetchMonthlyData()
             ]);
             
         } catch (err) {
@@ -164,7 +183,7 @@ export const useSprayRealtime = (machineId) => {
         } finally {
             setLoading(false);
         }
-    }, [fetchRealtimeData, fetchDailyData, fetchPieChartData, fetchStatistics, fetchHistoryData, fetchWeeklyData]);
+    }, [fetchRealtimeData, fetchDailyData, fetchPieChartData, fetchStatistics, fetchHistoryData, fetchWeeklyData, fetchMonthlyData]);
     
     /**
      * Update realtime data from socket event
@@ -212,29 +231,47 @@ export const useSprayRealtime = (machineId) => {
         }));
 
         setWeeklyData(prev => {
-        if (!prev || prev.length === 0) return prev;
-        
-        const today = socketData.date; // Format: "2026-01-05"
-        
-        return prev.map(day => {
-            if (day.date === today) {
-                console.log(`📊 [useSprayRealtime] Updating weekly data for ${today}:`, {
-                    oldOperatingTime: day.operatingTime,
-                    newOperatingTime: socketData.activeTime,
-                    oldPausedTime: day.pausedTime,
-                    newPausedTime: socketData.stopTime
-                });
-                
-                return {
-                    ...day,
-                    operatingTime: socketData.activeTime ?? day.operatingTime,
-                    pausedTime: socketData.stopTime ?? day.pausedTime,
-                    energyConsumption: socketData.totalEnergyConsumed ?? day.energyConsumption
-                };
-            }
-            return day;
+            if (!prev || prev.length === 0) return prev;
+            
+            const today = socketData.date;  
+            
+            return prev.map(day => {
+                if (day.date === today) {
+                    console.log(`📊 [useSprayRealtime] Updating weekly data for ${today}:`, {
+                        oldOperatingTime: day.operatingTime,
+                        newOperatingTime: socketData.activeTime,
+                        oldPausedTime: day.pausedTime,
+                        newPausedTime: socketData.stopTime
+                    });
+                    
+                    return {
+                        ...day,
+                        operatingTime: socketData.activeTime ?? day.operatingTime,
+                        pausedTime: socketData.stopTime ?? day.pausedTime,
+                        energyConsumption: socketData.totalEnergyConsumed ?? day.energyConsumption
+                    };
+                }
+                return day;
+            });
         });
-    });
+
+        setMonthlyData(prev => {
+            if (!prev || prev.length === 0) return prev;
+            
+            const today = socketData.date;
+            
+            return prev.map(day => {
+                if (day.date === today) {
+                    return {
+                        ...day,
+                        operatingTime: socketData.activeTime ?? day.operatingTime,
+                        pausedTime: socketData.stopTime ?? day.pausedTime,
+                        energyConsumption: socketData.totalEnergyConsumed ?? day.energyConsumption
+                    };
+                }
+                return day;
+            });
+        });
         
         setIsConnected(true);
         setError(null);
@@ -291,6 +328,7 @@ export const useSprayRealtime = (machineId) => {
         pieChartData,
         historyData,
         weeklyData,
+        monthlyData,
         
         // Status
         loading,

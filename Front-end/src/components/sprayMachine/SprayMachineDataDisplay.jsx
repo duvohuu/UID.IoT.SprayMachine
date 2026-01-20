@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import { 
     Card, 
     CardContent, 
@@ -6,8 +6,14 @@ import {
     Box, 
     Grid, 
     CircularProgress, 
-    Alert 
+    Alert,
+    Slider,      
+    IconButton   
 } from '@mui/material';
+import { 
+    ChevronLeft as ChevronLeftIcon,   
+    ChevronRight as ChevronRightIcon  
+} from '@mui/icons-material';
 import { Pie, Bar } from 'react-chartjs-2';
 import { 
     Chart as ChartJS, 
@@ -31,9 +37,31 @@ ChartJS.register(
     Legend
 );
 
-const SprayMachineDataDisplay = ({ dailyData, statistics, weeklyData, loading, error }) => {
+const SprayMachineDataDisplay = ({ dailyData, statistics, monthlyData, loading, error }) => {
+    const [sliderValue, setSliderValue] = useState(0);
+    const DAYS_PER_VIEW = 7;
+    const totalDays = monthlyData?.length || 0;
+    const maxSliderValue = Math.max(0, totalDays - DAYS_PER_VIEW);
 
-    // ==================== HELPER: CONVERT HOURS TO HH:MM ====================
+    const displayedMonthData = useMemo(() => {
+        if (!monthlyData || monthlyData.length === 0) return [];
+        return monthlyData.slice(sliderValue, sliderValue + DAYS_PER_VIEW);
+    }, [monthlyData, sliderValue]);
+
+    const handleSliderChange = (event, newValue) => {
+        setSliderValue(newValue);
+    };
+
+    const handlePrevious = () => {
+        setSliderValue(prev => Math.max(0, prev - DAYS_PER_VIEW));
+    };
+
+    const handleNext = () => {
+        setSliderValue(prev => Math.min(maxSliderValue, prev + DAYS_PER_VIEW));
+    };
+    
+
+    // ==================== CONVERT HOURS TO HH:MM ====================
     const formatHoursToTime = (hours) => {
         if (!hours || hours === 0) return '0h 0m';
         const h = Math.floor(hours);
@@ -185,31 +213,30 @@ const SprayMachineDataDisplay = ({ dailyData, statistics, weeklyData, loading, e
         }
     };
 
-    // ==================== BAR CHART DATA (TUẦN HIỆN TẠI) ====================
-    const getWeekRange = () => {
-        if (!weeklyData || weeklyData.length === 0) return '';
-        const firstDate = new Date(weeklyData[0].date + 'T00:00:00Z');
-        const lastDate = new Date(weeklyData[weeklyData.length - 1].date + 'T00:00:00Z');
-        return `${firstDate.getUTCDate()}/${firstDate.getUTCMonth() + 1} - ${lastDate.getUTCDate()}/${lastDate.getUTCMonth() + 1}`;
+    // ==================== BAR CHART DATA ====================
+    const getMonthRange = () => {
+        if (!monthlyData || monthlyData.length === 0) return '';
+        const firstDate = new Date(monthlyData[0].date + 'T00:00:00Z');
+        const year = firstDate.getUTCFullYear();
+        const month = firstDate.toLocaleString('vi-VN', { month: 'long' });
+        return `${month} ${year}`;
     };
 
-    const barData = weeklyData && weeklyData.length > 0 ? {
-        labels: weeklyData.map(day => {
-            const dateObj = new Date(day.date + 'T00:00:00Z');
-            const dateStr = `${dateObj.getUTCDate()}/${dateObj.getUTCMonth() + 1}`;
-            return `${day.dayOfWeek}\n${dateStr}`;
+    const barData = displayedMonthData.length > 0 ? {
+        labels: displayedMonthData.map(day => {
+            return `${day.dayOfWeek}\n${day.day}`;
         }),
         datasets: [
             {
                 label: 'Thời gian chạy',
-                data: weeklyData.map(day => day.operatingTime || 0), 
+                data: displayedMonthData.map(day => day.operatingTime || 0), 
                 backgroundColor: 'rgba(76, 175, 80, 0.2)',
                 borderColor: '#4caf50',
                 borderWidth: 2
             },
             {
                 label: 'Thời gian dừng',
-                data: weeklyData.map(day => day.pausedTime || 0), 
+                data: displayedMonthData.map(day => day.pausedTime || 0), 
                 backgroundColor: 'rgba(255, 152, 0, 0.2)',
                 borderColor: '#ff9800',
                 borderWidth: 2
@@ -253,7 +280,7 @@ const SprayMachineDataDisplay = ({ dailyData, statistics, weeklyData, loading, e
             x: {
                 title: {
                     display: true,
-                    text: 'Ngày trong tuần'
+                    text: 'Ngày trong tháng'
                 }
             }
         }
@@ -279,27 +306,80 @@ const SprayMachineDataDisplay = ({ dailyData, statistics, weeklyData, loading, e
                 </CardContent>
             </Card>
 
-            {/* ==================== BIỂU ĐỒ CỘT (TUẦN HIỆN TẠI) ==================== */}
+            {/* ==================== BIỂU ĐỒ CỘT (THÁNG HIỆN TẠI) ==================== */}
             <Card sx={{ mb: 3 }}>
                 <CardContent>
                     <Typography variant="h5" gutterBottom sx={{ fontWeight: 'bold', mb: 1 }}>
-                        📊 Thời gian hoạt động tuần này {getWeekRange()}
+                        📊 Thời gian hoạt động tháng này - {getMonthRange()}
                     </Typography>
+                    
                     {barData ? (
                         <>
-                            <Box sx={{ height: 400, position: 'relative' }}>
+                            {/* Bar Chart */}
+                            <Box sx={{ height: 400, position: 'relative', mb: 2 }}>
                                 <Bar data={barData} options={barOptions} />
                             </Box>
+
+                            {/* Slider Controls */}
+                            <Box sx={{ 
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                gap: 2,
+                                px: 2,
+                                mb: 2
+                            }}>
+                                <IconButton 
+                                    onClick={handlePrevious}
+                                    disabled={sliderValue === 0}
+                                    size="small"
+                                    sx={{ 
+                                        bgcolor: 'action.hover',
+                                        '&:hover': { bgcolor: 'action.selected' }
+                                    }}
+                                >
+                                    <ChevronLeftIcon />
+                                </IconButton>
+
+                                <Slider
+                                    value={sliderValue}
+                                    onChange={handleSliderChange}
+                                    min={0}
+                                    max={maxSliderValue}
+                                    step={1}
+                                    marks={[
+                                        { value: 0, label: '1' },
+                                        { value: maxSliderValue, label: `${totalDays}` }
+                                    ]}
+                                    sx={{ flexGrow: 1 }}
+                                    valueLabelDisplay="auto"
+                                    valueLabelFormat={(value) => `Ngày ${value + 1}`}
+                                />
+
+                                <IconButton 
+                                    onClick={handleNext}
+                                    disabled={sliderValue >= maxSliderValue}
+                                    size="small"
+                                    sx={{ 
+                                        bgcolor: 'action.hover',
+                                        '&:hover': { bgcolor: 'action.selected' }
+                                    }}
+                                >
+                                    <ChevronRightIcon />
+                                </IconButton>
+                            </Box>
+
+                            {/* Info Box */}
                             <Box sx={{ mt: 2, p: 2, bgcolor: 'background.default', borderRadius: 1 }}>
                                 <Typography variant="body2" color="text.secondary" align="center">
-                                    💡 Mỗi cột thể hiện thời gian hoạt động và dừng trong ngày (tối đa 12h/ngày)
+                                    💡 Hiển thị {displayedMonthData.length} ngày ({sliderValue + 1} - {sliderValue + displayedMonthData.length}) 
+                                    / Tổng {totalDays} ngày trong tháng
                                 </Typography>
                             </Box>
                         </>
                     ) : (
                         <Box sx={{ textAlign: 'center', py: 4 }}>
                             <Typography variant="body2" color="text.secondary">
-                                Chưa có dữ liệu tuần này
+                                Chưa có dữ liệu tháng này
                             </Typography>
                         </Box>
                     )}

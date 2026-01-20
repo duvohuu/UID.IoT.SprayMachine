@@ -387,3 +387,57 @@ export const getCurrentWeekData = async (machineId) => {
         throw error;
     }
 };
+
+/**
+ * Get current month data (all days in current month)
+ * @param {string} machineId - Machine identifier
+ * @returns {Promise<Array>} Array of days with data for current month
+ */
+export const getCurrentMonthData = async (machineId) => {
+    try {
+        const today = getVietnamDateString();
+        const year = parseInt(today.substring(0, 4));
+        const month = parseInt(today.substring(5, 7));
+        
+        // First day of month
+        const firstDay = `${year}-${String(month).padStart(2, '0')}-01`;
+        
+        // Last day of month
+        const lastDay = new Date(year, month, 0).getDate();
+        const lastDayStr = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+        
+        console.log(`📅 Getting month data: ${firstDay} to ${lastDayStr}`);
+        
+        // Fetch all days in month
+        const monthData = await SprayMachineData
+            .find({ 
+                machineId,
+                date: { $gte: firstDay, $lte: lastDayStr }
+            })
+            .sort({ date: 1 })
+            .lean();
+        
+        // Generate all days in month
+        const result = [];
+        for (let day = 1; day <= lastDay; day++) {
+            const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+            const existingData = monthData.find(d => d.date === dateStr);
+            
+            result.push({
+                date: dateStr,
+                day: day,
+                dayOfWeek: getDayOfWeekName(dateStr),
+                activeTime: existingData?.activeTime || 0,
+                stopTime: existingData?.stopTime || 0,
+                totalEnergyConsumed: existingData?.totalEnergyConsumed || 0,
+                hasData: !!existingData
+            });
+        }
+        
+        return result;
+        
+    } catch (error) {
+        console.error(`Error getting month data for ${machineId}:`, error);
+        throw error;
+    }
+};

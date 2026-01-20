@@ -7,6 +7,7 @@ import {
     getSprayStatistics,
     getSprayPieChartData,
     getSprayWeeklyData,
+    getSprayMonthlyData,
     handleMQTTUpdate, 
     getMQTTConnectionStatus 
 } from '../controllers/sprayMachineController.js';
@@ -20,6 +21,7 @@ router.use(protect);
 router.get('/realtime/:machineId', getSprayRealtimeData);
 router.get('/daily/:machineId', getSprayDailyData);
 router.get('/weekly/:machineId', getSprayWeeklyData); 
+router.get('/monthly/:machineId', getSprayMonthlyData); 
 router.get('/history/:machineId', getSpray30DaysHistory);
 router.get('/statistics/:machineId', getSprayStatistics);
 router.get('/pie-chart/:machineId', getSprayPieChartData);

@@ -58,6 +58,7 @@ const SprayMachinePage = () => {
         pieChartData,
         historyData,
         weeklyData,
+        monthlyData, 
         loading: sprayLoading,
         error: sprayError,
         isConnected,
@@ -252,7 +253,7 @@ const SprayMachinePage = () => {
                                 statistics={statistics}
                                 pieChartData={pieChartData}
                                 historyData={historyData}
-                                weeklyData={weeklyData}
+                                monthlyData={monthlyData}
                                 loading={sprayLoading}
                                 error={sprayError}
                             />
@@ -274,7 +275,7 @@ const SprayMachinePage = () => {
                                 statistics={statistics}
                                 pieChartData={pieChartData}
                                 historyData={historyData}
-                                weeklyData={weeklyData}
+                                monthlyData={monthlyData}
                                 loading={sprayLoading}
                                 error={sprayError}
                             />
