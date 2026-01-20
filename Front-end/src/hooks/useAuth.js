@@ -18,10 +18,12 @@ const useAuth = (setUser, socket) => {
             const res = await loginUser(email, password);
             if (res.success) {
                 const userData = {
+                    userId: res.userId,
                     username: res.username,
                     email: res.email,
                     role: res.role,
                     avatar: res.avatar
+
                 };
                 
                 // Cập nhật state và localStorage

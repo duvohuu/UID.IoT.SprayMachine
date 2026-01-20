@@ -19,9 +19,14 @@ const MachineStatusCard = ({ machine, user, onClick, onDelete }) => {
         statusColor = 'success';
         statusText = 'Đang hoạt động';
         statusBgColor = theme.palette.success.main;
-    } else {
-        statusColor = 'error';
+    } else if (machine.status === 'offline') {
+        statusColor = 'warning';
         statusText = 'Đang dừng';
+        statusBgColor = theme.palette.warning.main;
+    }
+    else {
+        statusColor = 'error';
+        statusText = 'Mất kết nối';
         statusBgColor = theme.palette.error.main;
     }
     

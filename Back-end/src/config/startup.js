@@ -80,7 +80,6 @@ export const handleGracefulShutdown = (server, signal) => {
 
     // Force exit after 10s if server doesn't close
     setTimeout(() => {
-        console.error('⚠️  Forcing shutdown after timeout');
         process.exit(1);
     }, 10000);
 };

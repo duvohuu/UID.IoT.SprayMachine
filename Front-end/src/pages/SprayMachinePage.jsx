@@ -22,7 +22,6 @@ import {
 import { useMachine } from '../hooks/useMachine';
 import { useSprayRealtime } from '../hooks/useSprayRealtime';
 import { useMachineSocketEvents } from '../hooks/useSocketEvents';
-import { useSnackbar } from '../context/SnackbarContext';
 
 // Import components
 import MachineHeader from '../components/common/MachineHeader';
@@ -34,12 +33,10 @@ const SprayMachinePage = () => {
     const { machineId } = useParams();
     const navigate = useNavigate();
     const theme = useTheme();
-    const { showSnackbar } = useSnackbar();
     const isMobile = useMediaQuery(theme.breakpoints.down('md'));
     
     const [machineRealtime, setMachineRealtime] = useState(null);
     const [panelExpanded, setPanelExpanded] = useState(!isMobile);
-    const [prevIsConnected, setPrevIsConnected] = useState(true);
 
     // ==================== FETCH MACHINE INFO ====================
     
@@ -57,7 +54,6 @@ const SprayMachinePage = () => {
         statistics,
         pieChartData,
         historyData,
-        weeklyData,
         monthlyData, 
         loading: sprayLoading,
         error: sprayError,
@@ -84,17 +80,8 @@ const SprayMachinePage = () => {
         }));
         
         updateConnectionStatus(update.isConnected);
-        if (!update.isConnected && prevIsConnected) {
-            showSnackbar(
-                `⚠️ ${machine?.name} mất kết nối MQTT (không nhận dữ liệu trong 10s)`,
-                'warning'
-            );
-        }
-    }, [machine, updateConnectionStatus, showSnackbar, prevIsConnected]);
+    }, [machine, updateConnectionStatus]);
     
-    React.useEffect(() => {
-        setPrevIsConnected(isConnected);
-    }, [isConnected]);
 
     const handleRealtimeUpdate = useCallback((socketData) => {
         console.log(`[${machine?.name}] Realtime data update:`, socketData);

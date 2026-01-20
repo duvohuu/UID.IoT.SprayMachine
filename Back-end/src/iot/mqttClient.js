@@ -4,9 +4,11 @@ import {
     verifyMachine, 
     updateMachineConnectionStatus 
 } from '../services/machineService.js';
-import {
-    processMQTTUpdate,
-} from '../services/sprayMachineService.js';
+import { processMQTTUpdate } from '../services/sprayMachineService.js';
+import { createNotification, 
+        createAndBroadcastNotification } 
+from '../services/notificationService.js';
+import Machine from '../models/Machine.model.js';
 
 /**
  * ========================================
@@ -101,6 +103,7 @@ const emitSocketEvents = (result) => {
             stopTime: parseFloat(updatedData.stopTime.toFixed(2)),
             totalEnergyConsumed: parseFloat(updatedData.totalEnergyConsumed.toFixed(3)),
             powerConsumption: parseFloat(updatedData.currentPowerConsumption.toFixed(3)),
+            efficiency: updatedData.efficiency, 
             lastUpdate: updatedData.lastUpdate
         };
 
@@ -247,20 +250,16 @@ export const getMQTTStatus = () => {
 // ==================== TIMEOUT HANDLING ====================
 
 const resetMachineTimeout = (machineId) => {
-    // Clear old timeout
     if (machineTimeouts.has(machineId)) {
         clearTimeout(machineTimeouts.get(machineId));
     }
 
-    // Set new timeout
     const timeoutId = setTimeout(async () => {
         console.log(`⏱️ [MQTT] Timeout for ${machineId} - No message in 10s`);
         
         try {
-            // Update machine connection status to false
-            const updatedMachine = await updateMachineConnectionStatus(machineId, false);
+            const updatedMachine = await updateMachineConnectionStatus(machineId, false, 'error');
             
-            // Emit socket event
             const io = getIO();
             const disconnectEvent = {
                 machineId,
@@ -274,10 +273,35 @@ const resetMachineTimeout = (machineId) => {
             io.emit('machine:status-update', disconnectEvent);
             io.to(`machine-${machineId}`).emit('machine:status-update', disconnectEvent);
             
-            console.log(`❌ [MQTT] ${machineId} marked as disconnected`);
+            try {
+                const machine = await Machine.findOne({ machineId });
+                
+                if (!machine) {
+                    console.error(`❌ [MQTT] Machine not found: ${machineId}`);
+                    return;
+                }
+                
+                console.log(`📋 [MQTT] Creating notification for machine: ${machineId}`);
+                console.log(`   Machine name: ${machine.name}`);
+                console.log(`   Owner userId: ${machine.userId}`);
+                
+                await createAndBroadcastNotification({
+                    userId: machine.userId,
+                    machineId: machine.machineId,
+                    machineName: machine.name,
+                    type: 'mqtt_disconnected',
+                    severity: 'error',
+                    title: '⚠️ Mất kết nối MQTT',
+                    message: `${machine.name} không nhận được dữ liệu trong 10 giây. Vui lòng kiểm tra kết nối.`,
+                    source: 'MQTT Monitor'
+                });
+                
+            } catch (notifError) {
+                console.error(`❌ [Notification] Error creating notification:`, notifError);
+            }
             
         } catch (error) {
-            console.error(`[MQTT] Error handling timeout for ${machineId}:`, error.message);
+            console.error(`❌ [MQTT] Error handling timeout for ${machineId}:`, error);
         }
     }, MQTT_TIMEOUT_MS);
 

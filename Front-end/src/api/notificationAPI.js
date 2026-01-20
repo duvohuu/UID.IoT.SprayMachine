@@ -1,114 +1,53 @@
+import axios from 'axios';
 import { API_URL } from '../config/apiConfig.js';
+
+axios.defaults.withCredentials = true;
 
 class NotificationAPI {
     async getNotifications() {
-        try { 
-            const token = document.cookie
-                .split('; ')
-                .find(row => row.startsWith('authToken='))
-                ?.split('=')[1];
-
-            const response = await fetch(`${API_URL}/api/notifications`, {
-                method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                credentials: 'include'
-            });
-
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-
-            const result = await response.json();
-            console.log('📨 API Response:', result);
+        try {
+            console.log('📡 [API] Fetching notifications from:', `${API_URL}/api/notifications`);
             
-            // Trả về data theo format mà component expect
-            return result.data || { notifications: [], unreadCount: 0 };
+            const response = await axios.get(
+                `${API_URL}/api/notifications`,
+                { withCredentials: true }
+            );
+            
+            console.log('📨 [API] Response:', response.data);
+            
+            return response.data.data || { notifications: [], unreadCount: 0 };
         } catch (error) {
-            console.error('Error fetching notifications:', error);
+            console.error('❌ [API] Error fetching notifications:', error);
+            console.error('   Status:', error.response?.status);
+            console.error('   Message:', error.response?.data?.message);
             throw error;
         }
     }
 
     async markAsRead(notificationId) {
         try {
-            const token = document.cookie
-                .split('; ')
-                .find(row => row.startsWith('authToken='))
-                ?.split('=')[1];
-
-            const response = await fetch(`${API_URL}/api/notifications/${notificationId}/read`, {
-                method: 'PATCH',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                credentials: 'include'
-            });
-
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-
-            return await response.json();
+            const response = await axios.patch(
+                `${API_URL}/api/notifications/${notificationId}/read`,
+                {},
+                { withCredentials: true }
+            );
+            return response.data;
         } catch (error) {
-            console.error('Error marking notification as read:', error);
+            console.error('❌ [API] Error marking as read:', error);
             throw error;
         }
     }
 
     async markAllAsRead() {
         try {
-            const token = document.cookie
-                .split('; ')
-                .find(row => row.startsWith('authToken='))
-                ?.split('=')[1];
-
-            const response = await fetch(`${API_URL}/api/notifications/mark-all-read`, {
-                method: 'PATCH',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                credentials: 'include'
-            });
-
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-
-            return await response.json();
+            const response = await axios.patch(
+                `${API_URL}/api/notifications/mark-all-read`,
+                {},
+                { withCredentials: true }
+            );
+            return response.data;
         } catch (error) {
-            console.error('Error marking all notifications as read:', error);
-            throw error;
-        }
-    }
-
-    async deleteNotification(notificationId) {
-        try {
-            const token = document.cookie
-                .split('; ')
-                .find(row => row.startsWith('authToken='))
-                ?.split('=')[1];
-
-            const response = await fetch(`${API_URL}/api/notifications/${notificationId}`, {
-                method: 'DELETE',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                credentials: 'include'
-            });
-
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-
-            return await response.json();
-        } catch (error) {
-            console.error('Error deleting notification:', error);
+            console.error('❌ [API] Error marking all as read:', error);
             throw error;
         }
     }

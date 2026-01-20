@@ -21,6 +21,7 @@ export const getSprayRealtimeData = async (req, res) => {
             activeTime: parseFloat(todayData.activeTime.toFixed(2)),   
             stopTime: parseFloat(todayData.stopTime.toFixed(2)),          
             energyConsumption: parseFloat(todayData.totalEnergyConsumed.toFixed(3)),
+            efficiency: todayData.efficiency,
             errorCode: 0,
             operatorName: 'N/A',
             lastUpdate: todayData.lastUpdate,
@@ -64,7 +65,7 @@ export const getSprayDailyData = async (req, res) => {
             totalPaintUsed: 0,
             productCount: 0,
             energyConsumption: parseFloat(data.totalEnergyConsumed.toFixed(3)),
-            efficiency: parseFloat(efficiency.toFixed(1)),
+            efficiency: data.efficiency,
             avgCurrent: 0,
             current: 0
         };
@@ -102,7 +103,7 @@ export const getSpray30DaysHistory = async (req, res) => {
             operatingTime: parseFloat(day.activeTime.toFixed(2)),        // ← Lấy từ DB
             pausedTime: parseFloat(day.stopTime.toFixed(2)),             // ← Lấy từ DB
             energyConsumption: parseFloat(day.totalEnergyConsumed.toFixed(3)),
-            efficiency: parseFloat(((day.activeTime / 12) * 100).toFixed(1))
+            efficiency: day.efficiency
         }));
         
         res.json(formattedHistory);

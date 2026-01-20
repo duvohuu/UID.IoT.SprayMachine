@@ -12,7 +12,7 @@ import {
     AccessTime as TimeIcon,
     PlayArrow as PlayIcon,
     Pause as PauseIcon,
-    PowerSettingsNew as IdleIcon
+    SignalWifiOff as ErrorIcon
 } from '@mui/icons-material';
 
 /**
@@ -30,7 +30,7 @@ const SprayMachinePanel = ({ machine }) => {
     
     // ==================== STATUS LOGIC (DỰA VÀO machine.status) ====================
     
-    const machineStatus = machine?.status; // 'online' | 'offline' | 'idle'
+    const machineStatus = machine?.status; 
     
     let statusColor, statusText, statusIcon;
     
@@ -42,14 +42,14 @@ const SprayMachinePanel = ({ machine }) => {
             statusIcon = <PlayIcon sx={{ fontSize: 16 }} />;
             break;
         case 'offline':
-            statusColor = 'error';
+            statusColor = 'warning';
             statusText = 'Đang dừng';
             statusIcon = <PauseIcon sx={{ fontSize: 16 }} />;
             break;
-        case 'idle':
-            statusColor = 'warning';
-            statusText = 'Chờ';
-            statusIcon = <IdleIcon sx={{ fontSize: 16 }} />;
+        case 'error':
+            statusColor = 'error';
+            statusText = 'Mất kết nối';
+            statusIcon = <ErrorIcon sx={{ fontSize: 16 }} />;
             break;
         default:
             statusColor = 'default';

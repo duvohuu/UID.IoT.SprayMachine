@@ -300,7 +300,7 @@ const SprayMachineDataDisplay = ({ dailyData, statistics, monthlyData, loading, 
                     <Box sx={{ mt: 2, p: 2, bgcolor: 'background.default', borderRadius: 1 }}>
                         <Typography variant="body2" color="text.secondary" align="center">
                             💡 Hiệu suất: <strong>{dailyData.efficiency || 0}%</strong> 
-                            {' '}({formatHoursToTime(dailyData.operatingTime || 0)} / 12h)
+                             {' '}({formatHoursToTime(dailyData.operatingTime || 0)} / {formatHoursToTime((dailyData.operatingTime || 0) + (dailyData.pausedTime || 0))})
                         </Typography>
                     </Box>
                 </CardContent>

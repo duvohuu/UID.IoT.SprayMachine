@@ -11,6 +11,7 @@ import authRoutes from './api/routes/authRoutes.js';
 import userRoutes from './api/routes/userRoutes.js';
 import machineRoutes from './api/routes/machineRoutes.js';
 import sprayMachineRoutes from './api/routes/sprayMachineRoutes.js';
+import notificationRoutes from './api/routes/notificationRoutes.js';
 
 const app = express();
 
@@ -58,6 +59,9 @@ app.use('/api/machines', machineRoutes);
 
 // Spray Machine data routes
 app.use('/api/spray-machine', sprayMachineRoutes);
+
+// Notification routes
+app.use('/api/notifications', notificationRoutes);
 
 // ==================== HEALTH CHECK ====================
 app.get('/', (req, res) => {

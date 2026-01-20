@@ -49,6 +49,7 @@ export const getLatestData = async (machineId) => {
                         activeTime: 0,
                         stopTime: 0,
                         totalEnergyConsumed: 0,
+                        efficiency: 0,
                         energyAtStartOfDay,
                         currentPowerConsumption: energyAtStartOfDay,
                         lastStatus: 0,
@@ -84,6 +85,20 @@ const calculateEnergyConsumption = (data, powerConsumption) => {
     data.currentPowerConsumption = powerConsumption;
     
     return data;
+};
+
+/**
+ * Calculate efficiency based on active time and stop time
+ * @param {number} activeTime - Active time in hours
+ * @param {number} stopTime - Stop time in hours
+ * @returns {number} Efficiency percentage (0-100)
+ */
+const calculateEfficiency = (activeTime, stopTime) => {
+    const totalTime = activeTime + stopTime;
+    if (totalTime === 0) return 0;
+    
+    const efficiency = (activeTime / totalTime) * 100;
+    return parseFloat(efficiency.toFixed(1)); // Round to 1 decimal
 };
 
 /**
@@ -154,6 +169,9 @@ export const processMQTTUpdate = async (machineId, mqttData) => {
         // Validate and clamp values
         data = validateAndClampTimeValues(data);
         
+        // Update efficiency
+        data.efficiency = calculateEfficiency(data.activeTime, data.stopTime);
+
         // Update metadata
         data.lastUpdate = now;
         
@@ -249,6 +267,7 @@ export const resetDailyData = async (machineId, daysOffset = 0) => {
             targetData.activeTime = 0;
             targetData.stopTime = 0;
             targetData.totalEnergyConsumed = 0;
+            targetData.efficiency = 0;
             targetData.energyAtStartOfDay = energyAtStartOfDay;
             targetData.currentPowerConsumption = energyAtStartOfDay;
             targetData.lastStatus = 0;
@@ -263,6 +282,7 @@ export const resetDailyData = async (machineId, daysOffset = 0) => {
                 activeTime: 0,
                 stopTime: 0,
                 totalEnergyConsumed: 0,
+                efficiency: 0,
                 energyAtStartOfDay,
                 currentPowerConsumption: energyAtStartOfDay,
                 lastStatus: 0,
@@ -333,10 +353,6 @@ export const resetAllSprayMachines = async (daysOffset = 0) => {
 export const initializeDailyResetScheduler = () => {
     const UTC_HOUR = (WORK_SHIFT.START_HOUR - TIME_CONFIG.VIETNAM_TIMEZONE_OFFSET + 24) % 24;
     const cronExpression = `${WORK_SHIFT.START_MINUTE} ${UTC_HOUR} * * *`;
-    
-    console.log(`Daily reset scheduler initialized: ${formatWorkShift()}`);
-    console.log(`Cron expression: ${cronExpression} (UTC)`);
-    
     const cronJob = cron.schedule(cronExpression, async () => {
         console.log('Running daily reset at 6:00 AM Vietnam time');
         await resetAllSprayMachines(0);

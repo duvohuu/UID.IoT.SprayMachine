@@ -2,11 +2,7 @@ import { Server } from 'socket.io';
 
 let io = null;
 
-/**
- * Initialize Socket.IO server
- */
 export const initializeSocket = (server) => {
-    // Parse CORS origins from .env
     const corsOrigins = process.env.CORS_ORIGINS 
         ? process.env.CORS_ORIGINS.split(',').map(origin => origin.trim())
         : ['http://localhost:5173'];
@@ -17,15 +13,47 @@ export const initializeSocket = (server) => {
             methods: ['GET', 'POST'],
             credentials: true
         },
-        pingTimeout: 60000,      // ← Tăng timeout
-        pingInterval: 25000,     // ← Heartbeat interval
-        transports: ['websocket', 'polling']  // ← Support cả 2
+        pingTimeout: 60000,
+        pingInterval: 25000,
+        transports: ['websocket', 'polling']
     });
 
     io.on('connection', (socket) => {
         console.log(`✅ Socket.IO: Client connected - ${socket.id}`);
+
+        socket.on('join-user-room', (userId) => {
+            // ⭐ VALIDATE
+            if (!userId) {
+                console.error(`❌ join-user-room with empty userId from ${socket.id}`);
+                socket.emit('room-join-error', { message: 'userId is required' });
+                return;
+            }
+
+            const roomName = `user:${userId}`;
+            socket.join(roomName);
+            
+            console.log(`📡 Client ${socket.id} joined room: ${roomName}`);
+            console.log(`   UserID: ${userId}`);
+            
+            const rooms = Array.from(socket.rooms);
+            console.log(`   Socket ${socket.id} is now in rooms:`, rooms);
+            
+            const socketsInRoom = io.sockets.adapter.rooms.get(roomName);
+            socket.emit('room-joined', {
+                success: true,
+                room: roomName,
+                userId: userId,
+                socketId: socket.id,
+                timestamp: new Date().toISOString()
+            });
+            
+        });
+
+        socket.on('join-machine-room', (machineId) => {
+            const roomName = `machine-${machineId}`;
+            socket.join(roomName);
+        });
         
-        // Handle disconnect with better logging
         socket.on('disconnect', (reason) => {
             if (reason === 'transport close') {
                 console.log(`🔌 Socket.IO: Client disconnected normally - ${socket.id}`);
@@ -38,12 +66,10 @@ export const initializeSocket = (server) => {
             }
         });
 
-        // Handle errors
         socket.on('error', (error) => {
             console.error(`❌ Socket.IO Error - ${socket.id}:`, error);
         });
 
-        // Handle machine subscription
         socket.on('subscribe', (machineId) => {
             socket.join(`machine:${machineId}`);
             console.log(`📡 Client ${socket.id} subscribed to machine:${machineId}`);
@@ -59,9 +85,6 @@ export const initializeSocket = (server) => {
     return io;
 };
 
-/**
- * Get Socket.IO instance
- */
 export const getIO = () => {
     if (!io) {
         throw new Error('Socket.IO not initialized');
