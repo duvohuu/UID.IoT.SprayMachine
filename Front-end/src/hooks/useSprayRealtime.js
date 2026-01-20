@@ -55,10 +55,8 @@ export const useSprayRealtime = (machineId) => {
             if (result.success && result.data) {
                 setRealtimeData(result.data);
                 setIsConnected(result.data.isConnected || false);
-                setError(null);
             } else {
                 console.error('❌ [useSprayRealtime] Realtime failed:', result.message);
-                setError(result.message);
             }
         } catch (err) {
             console.error('❌ [useSprayRealtime] Realtime error:', err);
@@ -238,23 +236,18 @@ export const useSprayRealtime = (machineId) => {
         });
     });
         
-        // Update connection status
         setIsConnected(true);
         setError(null);
+        fetchStatistics();
         
         console.log('✅ [useSprayRealtime] State updated from socket');
-    }, []);
-
+    }, [fetchStatistics]); 
     /**
      * Update machine connection status from socket
      */
     const updateConnectionStatus = useCallback((status) => {
         console.log('📡 [useSprayRealtime] Connection status:', status);
         setIsConnected(status);
-        
-        if (!status) {
-            setError('Máy mất kết nối');
-        }
     }, []);
 
     // ==================== REFRESH FUNCTIONS (Manual) ====================

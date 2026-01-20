@@ -25,6 +25,8 @@ const MQTT_CONFIG = {
 };
 
 let mqttClient = null;
+const machineTimeouts = new Map();
+const MQTT_TIMEOUT_MS = 10000; 
 
 // ==================== MESSAGE PROCESSING FUNCTIONS ====================
 
@@ -44,6 +46,7 @@ const processMQTTMessage = async (data) => {
     try {
         // Step 1: Verify machine exists (from machineService)
         await verifyMachine(machineId);
+        resetMachineTimeout(machineId);
 
         // Step 2: Process MQTT update - save to SprayMachineData (from sprayMachineService)
         const updatedData = await processMQTTUpdate(machineId, {
@@ -228,17 +231,6 @@ export const publishMQTT = (topic, message) => {
 };
 
 /**
- * Disconnect MQTT client
- * Graceful shutdown
- */
-export const disconnectMQTT = () => {
-    if (mqttClient) {
-        mqttClient.end();
-        console.log('MQTT Client disconnected');
-    }
-};
-
-/**
  * Get MQTT client status
  * @returns {Object} MQTT status information
  */
@@ -250,6 +242,62 @@ export const getMQTTStatus = () => {
         topic: MQTT_CONFIG.topic,
         clientId: MQTT_CONFIG.clientId
     };
+};
+
+// ==================== TIMEOUT HANDLING ====================
+
+const resetMachineTimeout = (machineId) => {
+    // Clear old timeout
+    if (machineTimeouts.has(machineId)) {
+        clearTimeout(machineTimeouts.get(machineId));
+    }
+
+    // Set new timeout
+    const timeoutId = setTimeout(async () => {
+        console.log(`⏱️ [MQTT] Timeout for ${machineId} - No message in 10s`);
+        
+        try {
+            // Update machine connection status to false
+            await updateMachineConnectionStatus(machineId, false, 'offline');
+            
+            // Emit socket event
+            const io = getIO();
+            const disconnectEvent = {
+                machineId,
+                isConnected: false,
+                status: 'offline',
+                lastUpdate: new Date(),
+                message: 'MQTT timeout - No data received in 10s'
+            };
+            
+            io.emit('machine:status-update', disconnectEvent);
+            io.to(`machine-${machineId}`).emit('machine:status-update', disconnectEvent);
+            
+            console.log(`❌ [MQTT] ${machineId} marked as disconnected`);
+            
+        } catch (error) {
+            console.error(`[MQTT] Error handling timeout for ${machineId}:`, error.message);
+        }
+    }, MQTT_TIMEOUT_MS);
+
+    machineTimeouts.set(machineId, timeoutId);
+};
+/**
+ * Disconnect MQTT client
+ * Graceful shutdown
+ */
+export const disconnectMQTT = () => {
+    // Clear all timeouts
+    for (const [machineId, timeoutId] of machineTimeouts.entries()) {
+        clearTimeout(timeoutId);
+        console.log(`🧹 Cleared timeout for ${machineId}`);
+    }
+    machineTimeouts.clear();
+
+    if (mqttClient) {
+        mqttClient.end();
+        console.log('🔌 MQTT Client disconnected');
+    }
 };
 
 // ==================== EXPORTS ====================
