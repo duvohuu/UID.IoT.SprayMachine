@@ -258,14 +258,15 @@ const resetMachineTimeout = (machineId) => {
         
         try {
             // Update machine connection status to false
-            await updateMachineConnectionStatus(machineId, false, 'offline');
+            const updatedMachine = await updateMachineConnectionStatus(machineId, false);
             
             // Emit socket event
             const io = getIO();
             const disconnectEvent = {
                 machineId,
+                status: updatedMachine.status,
                 isConnected: false,
-                status: 'offline',
+                lastHeartbeat: updatedMachine.lastHeartbeat,
                 lastUpdate: new Date(),
                 message: 'MQTT timeout - No data received in 10s'
             };

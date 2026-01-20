@@ -274,7 +274,7 @@ export const updateMachineConnectionStatus = async (machineId, isConnected, mach
         lastConnected: isConnected ? new Date() : undefined
     };
     
-    if (machineStatus) {
+    if (machineStatus !== null && machineStatus !== undefined) {
         updates.status = machineStatus;
     }
     
