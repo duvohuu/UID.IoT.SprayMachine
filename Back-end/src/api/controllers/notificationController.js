@@ -14,10 +14,6 @@ export const getNotifications = async (req, res) => {
             isRead: false 
         });
         
-        console.log(`📬 [API] Get notifications for ${userId}:`, {
-            total: notifications.length,
-            unread: unreadCount
-        });
         
         res.json({
             success: true,

@@ -15,6 +15,28 @@ import {
 import { WORK_SHIFT, TIME_CONFIG } from '../shared/constant/workShift.constant.js';
 
 /**
+ * Get today's data - CHỈ LẤY, KHÔNG TẠO MỚI
+ * @param {string} machineId - Machine identifier
+ * @returns {Promise<Object|null>} Spray machine data document or null if not exists
+ */
+export const getTodayData = async (machineId) => {
+    try {
+        const today = getVietnamDateString();
+        
+        const todayData = await SprayMachineData.findOne({ 
+            machineId,
+            date: today
+        });
+        
+        return todayData;
+        
+    } catch (error) {
+        console.error(`Error getting today data for ${machineId}:`, error);
+        throw error;
+    }
+};
+
+/**
  * Get or create document for today
  * @param {string} machineId - Machine identifier
  * @returns {Promise<Object>} Spray machine data document
@@ -27,7 +49,18 @@ export const getLatestData = async (machineId) => {
             machineId 
         }).sort({ date: -1 });
         
+        // Nếu chưa có data hoặc data cũ hơn hôm nay
         if (!latestData || latestData.date < today) {
+            const existingToday = await SprayMachineData.findOne({
+                machineId,
+                date: today
+            });
+            
+            if (existingToday) {
+                return existingToday;
+            }
+            
+            // Nếu chưa có, tạo mới với giá trị khởi tạo
             const yesterday = getVietnamDateString(-1);
             const yesterdayData = await SprayMachineData.findOne({
                 machineId,
@@ -37,32 +70,21 @@ export const getLatestData = async (machineId) => {
             const energyAtStartOfDay = yesterdayData?.currentPowerConsumption || 0;
             const workStartTime = getWorkStartTime(today);
             
-            latestData = await SprayMachineData.findOneAndUpdate(
-                { 
-                    machineId, 
-                    date: today 
-                },
-                {
-                    $setOnInsert: {
-                        machineId,
-                        date: today,
-                        activeTime: 0,
-                        stopTime: 0,
-                        totalEnergyConsumed: 0,
-                        efficiency: 0,
-                        energyAtStartOfDay,
-                        currentPowerConsumption: energyAtStartOfDay,
-                        lastStatus: 0,
-                        lastStatusChangeTime: workStartTime,
-                        lastUpdate: new Date()
-                    }
-                },
-                {
-                    upsert: true,              
-                    new: true,                 
-                    setDefaultsOnInsert: true  
-                }
-            );
+            latestData = await SprayMachineData.create({
+                machineId,
+                date: today,
+                activeTime: 0,
+                stopTime: 0,
+                totalEnergyConsumed: 0,
+                efficiency: 0,
+                energyAtStartOfDay,
+                currentPowerConsumption: energyAtStartOfDay,
+                lastStatus: 0,
+                lastStatusChangeTime: workStartTime,
+                lastUpdate: new Date()
+            });
+            
+            console.log(`✅ Created new data for ${machineId} on ${today}`);
         }
         
         return latestData;
@@ -141,10 +163,10 @@ const validateAndClampTimeValues = (data) => {
 };
 
 /**
- * Process MQTT message update - Only during work shift
+ * Process MQTT message update 
  * @param {string} machineId - Machine identifier
  * @param {Object} mqttData - MQTT message data containing status and powerConsumption
- * @returns {Promise<Object|null>} Updated data or null if outside work shift
+ * @returns {Promise<Object|null>} Updated data or null if no shift exists
  */
 export const processMQTTUpdate = async (machineId, mqttData) => {
     try {
@@ -153,11 +175,16 @@ export const processMQTTUpdate = async (machineId, mqttData) => {
         
         // Check work shift
         if (!isWithinWorkShift()) {
+            console.log(`⏰ [${machineId}] Outside work shift - ignoring message`);
             return null;
         }
         
-        // Get or create today's data
-        let data = await getLatestData(machineId);
+        let data = await getTodayData(machineId);
+        
+        if (!data) {
+            console.log(`⚠️ [${machineId}] No shift exists for today - waiting for daily reset at 6AM`);
+            return null;
+        }
         
         // Calculate energy consumption
         data = calculateEnergyConsumption(data, powerConsumption);
@@ -185,6 +212,7 @@ export const processMQTTUpdate = async (machineId, mqttData) => {
         throw error;
     }
 };
+
 
 /**
  * Get 30 days history
@@ -299,7 +327,7 @@ export const resetDailyData = async (machineId, daysOffset = 0) => {
 };
 
 /**
- * Reset all spray machines - Create new shift at 6:00 AM
+ * Reset all spray machines - Create new shift at START_HOUR
  * @param {number} daysOffset - Days offset from today (0 = today)
  */
 export const resetAllSprayMachines = async (daysOffset = 0) => {
@@ -307,21 +335,25 @@ export const resetAllSprayMachines = async (daysOffset = 0) => {
 
     try {
         const machines = await Machine.find({ type: 'Spray Machine' });
+        
+        console.log(`🌅 [Daily Reset] Creating new shift for ${machines.length} machines on ${targetDate}`);
 
         const results = await Promise.allSettled(
             machines.map(async (machine) => {
                 const newData = await resetDailyData(machine.machineId, daysOffset);
                 
-                // Emit socket event to machine room and general spray machines room
+                // Emit socket event
                 const io = getIO();
                 const resetEvent = {
                     machineId: machine.machineId,
                     date: targetDate,
-                    message: 'New shift created at 6:00 AM'
+                    message: `New shift created at ${WORK_SHIFT.START_HOUR}:${String(WORK_SHIFT.START_MINUTE).padStart(2, '0')}`
                 };
                 
                 io.to(`machine-${machine.machineId}`).emit('spray:daily-reset', resetEvent);
-                io.to('spray-machines').emit('spray:daily-reset', resetEvent);
+                io.emit('spray:daily-reset', resetEvent);
+                
+                console.log(`✅ [${machine.machineId}] New shift created for ${targetDate}`);
                 
                 return machine.machineId;
             })
@@ -330,37 +362,60 @@ export const resetAllSprayMachines = async (daysOffset = 0) => {
         const succeeded = results.filter(r => r.status === 'fulfilled').length;
         const failed = results.filter(r => r.status === 'rejected').length;
 
-        console.log(`Daily reset completed: ${succeeded}/${machines.length} succeeded`);
+        console.log(`🌅 [Daily Reset] Completed: ${succeeded}/${machines.length} succeeded`);
         
         if (failed > 0) {
-            console.error(`Daily reset failed for ${failed} machines`);
+            console.error(`❌ [Daily Reset] Failed for ${failed} machines`);
             results.forEach((result, index) => {
                 if (result.status === 'rejected') {
-                    console.error(`Machine ${machines[index].machineId}:`, result.reason);
+                    console.error(`   Machine ${machines[index].machineId}:`, result.reason);
                 }
             });
         }
 
     } catch (error) {
-        console.error('Daily reset error:', error.message);
+        console.error('❌ [Daily Reset] Error:', error.message);
     }
 };
 
 /**
- * Initialize daily reset scheduler - Runs at 6:00 AM Vietnam time
+ * Initialize daily reset scheduler - Runs at START_HOUR:START_MINUTE Vietnam time
  * @returns {Object} Cron job instance
  */
 export const initializeDailyResetScheduler = () => {
-    const UTC_HOUR = (WORK_SHIFT.START_HOUR - TIME_CONFIG.VIETNAM_TIMEZONE_OFFSET + 24) % 24;
-    const cronExpression = `${WORK_SHIFT.START_MINUTE} ${UTC_HOUR} * * *`;
+    // Convert Vietnam time to UTC for cron
+    // Vietnam time = UTC + 7 hours
+    // UTC = Vietnam time - 7 hours
+    
+    const vnHour = WORK_SHIFT.START_HOUR;
+    const vnMinute = WORK_SHIFT.START_MINUTE;
+    
+    // Calculate total minutes
+    const vnTotalMinutes = vnHour * 60 + vnMinute;
+    const utcTotalMinutes = vnTotalMinutes - (TIME_CONFIG.VIETNAM_TIMEZONE_OFFSET * 60);
+    
+    // Handle negative minutes (previous day)
+    let UTC_HOUR, UTC_MINUTE;
+    if (utcTotalMinutes < 0) {
+        // Previous day
+        const adjustedMinutes = utcTotalMinutes + (24 * 60);
+        UTC_HOUR = Math.floor(adjustedMinutes / 60);
+        UTC_MINUTE = adjustedMinutes % 60;
+    } else {
+        UTC_HOUR = Math.floor(utcTotalMinutes / 60) % 24;
+        UTC_MINUTE = utcTotalMinutes % 60;
+    }
+    
+    const cronExpression = `${UTC_MINUTE} ${UTC_HOUR} * * *`;
+    
+    
     const cronJob = cron.schedule(cronExpression, async () => {
-        console.log('Running daily reset at 6:00 AM Vietnam time');
         await resetAllSprayMachines(0);
     }, {
-        timezone: 'UTC', 
+        timezone: 'UTC',
         scheduled: true
     });
-    
+        
     return cronJob;
 };
 

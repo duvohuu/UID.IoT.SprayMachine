@@ -34,37 +34,34 @@ const MQTT_TIMEOUT_MS = 10000;
 
 /**
  * Process incoming MQTT message
- * Xử lý business logic: verify machine, update data, update status
  * @param {Object} data - Parsed MQTT message data
  * @returns {Promise<Object|null>} Processed result or null if ignored
  */
 const processMQTTMessage = async (data) => {
     const { machineId, status, powerConsumption } = data;
 
-    console.log(`\n [MQTT] Processing message for: ${machineId}`);
-    console.log(`   Status: ${status} ${status === 1 ? '▶️  Running' : '⏸️  Stopped'}`);
-    console.log(`   Power: ${powerConsumption.toFixed(3)} kWh`);
-
     try {
-        // Step 1: Verify machine exists (from machineService)
+        // Step 1: Verify machine exists
         await verifyMachine(machineId);
         resetMachineTimeout(machineId);
 
-        // Step 2: Process MQTT update - save to SprayMachineData (from sprayMachineService)
+        // Step 2: Process MQTT update
         const updatedData = await processMQTTUpdate(machineId, {
             status,
             powerConsumption
         });
 
-        // Check if message was ignored (outside work shift)
         if (!updatedData) {
-            console.log(`MQTT] Message ignored (outside work shift) for ${machineId}`);
+            console.log(`⏰ [MQTT] No shift exists for ${machineId} - message ignored`);
+            
+            // Vẫn update machine status là online
+            const machineStatus = status === 1 ? 'online' : 'offline';
+            await updateMachineConnectionStatus(machineId, true, machineStatus);
+            
             return null;
         }
 
-        console.log(`MQTT] Data processed successfully for ${machineId}`);
-
-        // Step 3: Update Machine model status (from machineService)
+        // Step 3: Update Machine model status
         const machineStatus = status === 1 ? 'online' : 'offline';
         await updateMachineConnectionStatus(machineId, true, machineStatus);
 
@@ -76,7 +73,7 @@ const processMQTTMessage = async (data) => {
         };
 
     } catch (error) {
-        console.error(`[MQTT] Error processing message for ${machineId}:`, error.message);
+        console.error(`❌ [MQTT] Error processing message for ${machineId}:`, error.message);
         throw error;
     }
 };
