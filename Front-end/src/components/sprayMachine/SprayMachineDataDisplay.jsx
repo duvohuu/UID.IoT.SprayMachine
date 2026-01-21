@@ -76,7 +76,7 @@ const SprayMachineDataDisplay = ({ dailyData, statistics, monthlyData, loading, 
         if (value !== null && value !== undefined) {
             // Nếu là thời gian (operatingTime, pausedTime), format sang giờ:phút
             if (config.key === 'operatingTime' || config.key === 'pausedTime' || 
-                config.key === 'totalOperatingTime') {
+                config.key === 'errorTime' || config.key === 'totalOperatingTime') {
                 displayValue = formatHoursToTime(value);
             } else {
                 displayValue = typeof value === 'number' 
@@ -176,13 +176,14 @@ const SprayMachineDataDisplay = ({ dailyData, statistics, monthlyData, loading, 
 
     // ==================== PIE CHART DATA ====================
     const pieData = {
-        labels: ['Thời gian chạy', 'Thời gian dừng'],
+        labels: ['Thời gian chạy', 'Thời gian dừng', 'Thời gian mất kết nối'],
         datasets: [{
             data: [
                 dailyData.operatingTime || 0,
-                dailyData.pausedTime || 0
+                dailyData.pausedTime || 0,
+                dailyData.errorTime || 0
             ],
-            backgroundColor: ['#4caf50', '#f44336'],
+            backgroundColor: ['#4caf50', '#ff9800', '#f44336'],
             borderWidth: 2,
             borderColor: '#fff'
         }]
@@ -239,6 +240,13 @@ const SprayMachineDataDisplay = ({ dailyData, statistics, monthlyData, loading, 
                 data: displayedMonthData.map(day => day.pausedTime || 0), 
                 backgroundColor: 'rgba(255, 152, 0, 0.2)',
                 borderColor: '#ff9800',
+                borderWidth: 2
+            },
+            {
+                label: 'Thời gian mất kết nối',
+                data: displayedMonthData.map(day => day.errorTime || 0),
+                backgroundColor: 'rgba(244, 67, 54, 0.2)',
+                borderColor: '#f44336',
                 borderWidth: 2
             }
         ]

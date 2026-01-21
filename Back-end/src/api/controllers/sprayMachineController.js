@@ -19,7 +19,8 @@ export const getSprayRealtimeData = async (req, res) => {
             totalPaintUsed: 0,
             productCount: 0,
             activeTime: parseFloat(todayData.activeTime.toFixed(2)),   
-            stopTime: parseFloat(todayData.stopTime.toFixed(2)),          
+            stopTime: parseFloat(todayData.stopTime.toFixed(2)),  
+            errorTime: parseFloat(todayData.errorTime.toFixed(2)),  
             energyConsumption: parseFloat(todayData.totalEnergyConsumed.toFixed(3)),
             efficiency: todayData.efficiency,
             errorCode: 0,
@@ -56,12 +57,13 @@ export const getSprayDailyData = async (req, res) => {
         
         const data = await SprayMachineService.getLatestData(machineId);
         
-        const efficiency = (data.activeTime / 12) * 100;
+        const efficiency = (data.activeTime / (data.activeTime + data.stopTime)) * 100;
         
         const dailyData = {
             date: data.date,
             operatingTime: parseFloat(data.activeTime.toFixed(2)),       
-            pausedTime: parseFloat(data.stopTime.toFixed(2)),            
+            pausedTime: parseFloat(data.stopTime.toFixed(2)),    
+            errorTime: parseFloat(data.errorTime.toFixed(2)),        
             totalPaintUsed: 0,
             productCount: 0,
             energyConsumption: parseFloat(data.totalEnergyConsumed.toFixed(3)),
@@ -100,8 +102,9 @@ export const getSpray30DaysHistory = async (req, res) => {
         
         const formattedHistory = history.map(day => ({
             date: day.date,
-            operatingTime: parseFloat(day.activeTime.toFixed(2)),        // ← Lấy từ DB
-            pausedTime: parseFloat(day.stopTime.toFixed(2)),             // ← Lấy từ DB
+            operatingTime: parseFloat(day.activeTime.toFixed(2)),        
+            pausedTime: parseFloat(day.stopTime.toFixed(2)),  
+            errorTime: parseFloat(day.errorTime.toFixed(2)),
             energyConsumption: parseFloat(day.totalEnergyConsumed.toFixed(3)),
             efficiency: day.efficiency
         }));
@@ -133,6 +136,7 @@ export const getSprayWeeklyData = async (req, res) => {
             dayOfWeek: day.dayOfWeek, 
             operatingTime: parseFloat(day.activeTime.toFixed(2)),
             pausedTime: parseFloat(day.stopTime.toFixed(2)),
+            errorTime: parseFloat(day.errorTime.toFixed(2)),
             energyConsumption: parseFloat(day.totalEnergyConsumed.toFixed(3))
         }));
         
@@ -164,6 +168,7 @@ export const getSprayMonthlyData = async (req, res) => {
             dayOfWeek: day.dayOfWeek,
             operatingTime: parseFloat(day.activeTime.toFixed(2)),
             pausedTime: parseFloat(day.stopTime.toFixed(2)),
+            errorTime: parseFloat(day.errorTime.toFixed(2)),
             energyConsumption: parseFloat(day.totalEnergyConsumed.toFixed(3))
         }));
         
@@ -221,8 +226,8 @@ export const getSprayPieChartData = async (req, res) => {
         
         const pieChartData = {
             operatingTime: parseFloat(data.activeTime.toFixed(2)),       
-            pausedTime: parseFloat(data.stopTime.toFixed(2)),            
-            idleTime: 0
+            pausedTime: parseFloat(data.stopTime.toFixed(2)),   
+            errorTime: parseFloat(data.errorTime.toFixed(2))
         };
         
         // console.log(`📤 [Controller] Pie Chart response:`, pieChartData);
@@ -248,21 +253,7 @@ export const handleMQTTUpdate = async (req, res) => {
         const { status, powerConsumption } = req.body;
         
         // console.log(`📨 [Controller] POST MQTT Update for: ${machineId}`, { status, powerConsumption });
-        
-        if (typeof status !== 'number' || (status !== 0 && status !== 1)) {
-            return res.status(400).json({
-                success: false,
-                message: 'Invalid status. Must be 0 or 1'
-            });
-        }
-        
-        if (typeof powerConsumption !== 'number' || powerConsumption < 0) {
-            return res.status(400).json({
-                success: false,
-                message: 'Invalid powerConsumption. Must be >= 0'
-            });
-        }
-        
+    
         await SprayMachineService.verifyMachine(machineId);
         
         const updatedData = await SprayMachineService.processMQTTUpdate(machineId, {
@@ -279,6 +270,7 @@ export const handleMQTTUpdate = async (req, res) => {
                 date: updatedData.date,
                 operatingTime: parseFloat(updatedData.activeTime.toFixed(2)),    
                 pausedTime: parseFloat(updatedData.stopTime.toFixed(2)),         
+                errorTime: parseFloat(updatedData.errorTime.toFixed(2)),
                 totalEnergyConsumed: parseFloat(updatedData.totalEnergyConsumed.toFixed(3)),
                 lastStatus: updatedData.lastStatus
             }

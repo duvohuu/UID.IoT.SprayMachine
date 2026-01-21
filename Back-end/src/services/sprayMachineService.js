@@ -4,18 +4,18 @@ import cron from 'node-cron';
 import { getIO } from '../config/socket.js';
 import { 
     getVietnamDateString, 
-    getVietnamTime, 
     getWorkStartTime,
     isWithinWorkShift,
-    formatWorkShift,
     getMondayOfWeek,
     getDayOfWeekName,
     getWeekDates
 } from '../shared/utils/datetime.util.js';
 import { WORK_SHIFT, TIME_CONFIG } from '../shared/constant/workShift.constant.js';
+import { startErrorTracking } from '../iot/mqttClient.js';
+
 
 /**
- * Get today's data - CHỈ LẤY, KHÔNG TẠO MỚI
+ * Get today's data 
  * @param {string} machineId - Machine identifier
  * @returns {Promise<Object|null>} Spray machine data document or null if not exists
  */
@@ -75,6 +75,7 @@ export const getLatestData = async (machineId) => {
                 date: today,
                 activeTime: 0,
                 stopTime: 0,
+                errorTime: 0,
                 totalEnergyConsumed: 0,
                 efficiency: 0,
                 energyAtStartOfDay,
@@ -90,7 +91,7 @@ export const getLatestData = async (machineId) => {
         return latestData;
         
     } catch (error) {
-        console.error(`Error getting latest data for ${machineId}:`, error);
+        console.error(`Error getting latest data for ${machineId}:`, error);`   `
         throw error;
     }
 };
@@ -139,9 +140,13 @@ const updateMachineTime = (data, currentStatus, now) => {
         if (previousStatus === 1) {
             data.activeTime += hoursSinceLastChange;
             data.activeTime = Math.min(data.activeTime, WORK_SHIFT.HOURS_PER_DAY);
-        } else {
+        } else if (previousStatus === 0) {
             data.stopTime += hoursSinceLastChange;
             data.stopTime = Math.min(data.stopTime, WORK_SHIFT.HOURS_PER_DAY);
+        }
+        else {
+            data.errorTime += hoursSinceLastChange;
+            data.errorTime = Math.min(data.errorTime, WORK_SHIFT.HOURS_PER_DAY);
         }
         
         data.lastStatusChangeTime = now;
@@ -159,6 +164,7 @@ const updateMachineTime = (data, currentStatus, now) => {
 const validateAndClampTimeValues = (data) => {
     data.activeTime = Math.max(0, Math.min(data.activeTime, WORK_SHIFT.HOURS_PER_DAY));
     data.stopTime = Math.max(0, Math.min(data.stopTime, WORK_SHIFT.HOURS_PER_DAY));
+    data.errorTime = Math.max(0, Math.min(data.errorTime, WORK_SHIFT.HOURS_PER_DAY));
     return data;
 };
 
@@ -190,7 +196,9 @@ export const processMQTTUpdate = async (machineId, mqttData) => {
         data = calculateEnergyConsumption(data, powerConsumption);
         
         // Update machine time based on status
-        const currentStatus = (typeof status === 'number' && status === 1) ? 1 : 0;
+        const statusMap = { 1: 1, 0: 0, '-1': -1 };
+        const currentStatus = statusMap[status] ?? -1;
+
         data = updateMachineTime(data, currentStatus, now);
         
         // Validate and clamp values
@@ -211,9 +219,74 @@ export const processMQTTUpdate = async (machineId, mqttData) => {
         console.error(`Error processing MQTT for ${machineId}:`, error);
         throw error;
     }
+}
+
+/**
+ * Process machine timeout (update errorTime)
+ * @param {string} machineId - Machine identifier
+ * @returns {Promise<Object|null>} Updated data or null
+ */
+export const processErrorTimeout = async (machineId) => {
+    try {
+        const now = new Date();
+        
+        // Check work shift
+        if (!isWithinWorkShift()) {
+            console.log(`⏰ [${machineId}] Outside work shift - ignoring timeout`);
+            return null;
+        }
+        
+        let data = await getTodayData(machineId);
+        
+        if (!data) {
+            console.log(`⚠️ [${machineId}] No shift exists for today`);
+            return null;
+        }
+        
+        // Calculate time since last update
+        const timeSinceLastUpdate = now - new Date(data.lastStatusChangeTime);
+        const hoursSinceLastUpdate = timeSinceLastUpdate / (1000 * 60 * 60);
+        
+        // Update errorTime based on last status
+        if (timeSinceLastUpdate > TIME_CONFIG.MIN_UPDATE_INTERVAL) {
+            const previousStatus = data.lastStatus;
+            
+            // Add remaining time to appropriate field
+            if (previousStatus === 1) {
+                data.activeTime += hoursSinceLastUpdate;
+                data.activeTime = Math.min(data.activeTime, WORK_SHIFT.HOURS_PER_DAY);
+            } else if (previousStatus === 0) {
+                data.stopTime += hoursSinceLastUpdate;
+                data.stopTime = Math.min(data.stopTime, WORK_SHIFT.HOURS_PER_DAY);
+            } else if (previousStatus === -1) {
+                data.errorTime += hoursSinceLastUpdate;
+                data.errorTime = Math.min(data.errorTime, WORK_SHIFT.HOURS_PER_DAY);
+            }
+            
+            // Switch to error state
+            data.lastStatus = -1;
+            data.lastStatusChangeTime = now;
+        }
+        
+        // Validate and clamp values
+        data = validateAndClampTimeValues(data);
+        
+        // Update efficiency (exclude errorTime)
+        data.efficiency = calculateEfficiency(data.activeTime, data.stopTime);
+        
+        // Update metadata
+        data.lastUpdate = now;
+        
+        // Save to database
+        await data.save();
+        
+        return data;
+        
+    } catch (error) {
+        console.error(`Error processing timeout for ${machineId}:`, error);
+        throw error;
+    }
 };
-
-
 /**
  * Get 30 days history
  * @param {string} machineId - Machine identifier
@@ -290,34 +363,24 @@ export const resetDailyData = async (machineId, daysOffset = 0) => {
             date: targetDate 
         });
         
-        if (targetData) {
-            // Reset existing data
-            targetData.activeTime = 0;
-            targetData.stopTime = 0;
-            targetData.totalEnergyConsumed = 0;
-            targetData.efficiency = 0;
-            targetData.energyAtStartOfDay = energyAtStartOfDay;
-            targetData.currentPowerConsumption = energyAtStartOfDay;
-            targetData.lastStatus = 0;
-            targetData.lastStatusChangeTime = workStartTime; 
-            
-            await targetData.save();
-        } else {
-            // Create new data
-            targetData = await SprayMachineData.create({
-                machineId,
-                date: targetDate,
-                activeTime: 0,
-                stopTime: 0,
-                totalEnergyConsumed: 0,
-                efficiency: 0,
-                energyAtStartOfDay,
-                currentPowerConsumption: energyAtStartOfDay,
-                lastStatus: 0,
-                lastStatusChangeTime: workStartTime 
-            });
-        }
-        
+       
+        // Create new data
+        targetData = await SprayMachineData.create({
+            machineId,
+            date: targetDate,
+            activeTime: 0,
+            stopTime: 0,
+            errorTime: 0,
+            totalEnergyConsumed: 0,
+            efficiency: 0,
+            energyAtStartOfDay,
+            currentPowerConsumption: energyAtStartOfDay,
+            lastStatus: -1,
+            lastStatusChangeTime: workStartTime 
+        });
+
+        startErrorTracking(machineId);
+    
         return targetData;
         
     } catch (error) {
@@ -445,7 +508,8 @@ export const getCurrentWeekData = async (machineId) => {
                 date,
                 dayOfWeek: getDayOfWeekName(date),
                 activeTime: existingData?.activeTime || 0,              
-                stopTime: existingData?.stopTime || 0,                  
+                stopTime: existingData?.stopTime || 0,     
+                errorTime: existingData?.errorTime || 0,             
                 totalEnergyConsumed: existingData?.totalEnergyConsumed || 0,
                 hasData: !!existingData
             };
@@ -500,6 +564,7 @@ export const getCurrentMonthData = async (machineId) => {
                 dayOfWeek: getDayOfWeekName(dateStr),
                 activeTime: existingData?.activeTime || 0,
                 stopTime: existingData?.stopTime || 0,
+                errorTime: existingData?.errorTime || 0,
                 totalEnergyConsumed: existingData?.totalEnergyConsumed || 0,
                 hasData: !!existingData
             });

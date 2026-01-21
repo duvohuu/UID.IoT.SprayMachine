@@ -31,6 +31,15 @@ export const dailyStats = [
         description: 'Tổng thời gian máy tạm dừng'
     },
     {
+        key:'errorTime',
+        label: 'Thời gian mất kết nối',
+        icon: '❌',
+        unit: 'giờ',
+        color: '#f44336',
+        decimals: 2,
+        description: 'Tổng thời gian dừng của máy'
+    },
+    {
         key: 'energyConsumption',
         label: 'Năng lượng tiêu thụ',
         icon: '⚡',

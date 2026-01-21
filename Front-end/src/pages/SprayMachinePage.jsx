@@ -122,6 +122,7 @@ const SprayMachinePage = () => {
                 status: realtimeData.sprayStatus,
                 activeTime: realtimeData.activeTime,
                 stopTime: realtimeData.stopTime,
+                errorTime: realtimeData.errorTime,
                 source: 'socket' 
             });
         }

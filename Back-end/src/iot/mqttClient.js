@@ -4,10 +4,15 @@ import {
     verifyMachine, 
     updateMachineConnectionStatus 
 } from '../services/machineService.js';
-import { processMQTTUpdate } from '../services/sprayMachineService.js';
-import { createNotification, 
-        createAndBroadcastNotification } 
-from '../services/notificationService.js';
+import { 
+    processMQTTUpdate,
+    processErrorTimeout,
+    getTodayData 
+} from '../services/sprayMachineService.js';
+import { 
+    createNotification, 
+    createAndBroadcastNotification 
+} from '../services/notificationService.js';
 import Machine from '../models/Machine.model.js';
 
 /**
@@ -28,7 +33,9 @@ const MQTT_CONFIG = {
 
 let mqttClient = null;
 const machineTimeouts = new Map();
+const machineErrorIntervals = new Map(); 
 const MQTT_TIMEOUT_MS = 10000; 
+const ERROR_UPDATE_INTERVAL_MS = 10000;
 
 // ==================== MESSAGE PROCESSING FUNCTIONS ====================
 
@@ -41,11 +48,8 @@ const processMQTTMessage = async (data) => {
     const { machineId, status, powerConsumption } = data;
 
     try {
-        // Step 1: Verify machine exists
         await verifyMachine(machineId);
-        resetMachineTimeout(machineId);
 
-        // Step 2: Process MQTT update
         const updatedData = await processMQTTUpdate(machineId, {
             status,
             powerConsumption
@@ -53,28 +57,48 @@ const processMQTTMessage = async (data) => {
 
         if (!updatedData) {
             console.log(`⏰ [MQTT] No shift exists for ${machineId} - message ignored`);
-            
-            // Vẫn update machine status là online
             const machineStatus = status === 1 ? 'online' : 'offline';
             await updateMachineConnectionStatus(machineId, true, machineStatus);
-            
+            resetMachineTimeout(machineId);
             return null;
         }
 
-        // Step 3: Update Machine model status
         const machineStatus = status === 1 ? 'online' : 'offline';
-        await updateMachineConnectionStatus(machineId, true, machineStatus);
+        const updatedMachine = await updateMachineConnectionStatus(
+            machineId, 
+            true,
+            machineStatus
+        );
 
-        // Return processed result for socket emission
+        const io = getIO();
+        const updateEvent = {
+            machineId,
+            status: updatedMachine.status,
+            isConnected: true,
+            lastUpdate: updatedData.lastUpdate,
+            data: {
+                activeTime: updatedData.activeTime,
+                stopTime: updatedData.stopTime,
+                errorTime: updatedData.errorTime,
+                totalEnergyConsumed: updatedData.totalEnergyConsumed,
+                efficiency: updatedData.efficiency
+            }
+        };
+
+        io.to(`machine-${machineId}`).emit('spray:realtime-update', updateEvent);
+        io.emit('machine:status-update', updateEvent);
+
+        resetMachineTimeout(machineId);
+        
         return {
-            updatedData,
-            machineStatus,
-            isConnected: true
+            updatedData,        
+            machineStatus,         
+            isConnected: true     
         };
 
     } catch (error) {
-        console.error(`❌ [MQTT] Error processing message for ${machineId}:`, error.message);
-        throw error;
+        console.error(`❌ [MQTT] Error processing message for ${machineId}:`, error);
+        return null;
     }
 };
 
@@ -98,6 +122,7 @@ const emitSocketEvents = (result) => {
             status: updatedData.lastStatus,
             activeTime: parseFloat(updatedData.activeTime.toFixed(2)),
             stopTime: parseFloat(updatedData.stopTime.toFixed(2)),
+            errorTime: parseFloat(updatedData.errorTime.toFixed(2)),
             totalEnergyConsumed: parseFloat(updatedData.totalEnergyConsumed.toFixed(3)),
             powerConsumption: parseFloat(updatedData.currentPowerConsumption.toFixed(3)),
             efficiency: updatedData.efficiency, 
@@ -156,6 +181,9 @@ export const initializeMQTT = () => {
                 console.error('MQTT Subscribe Error:', err);
             } else {
                 console.log(`Subscribed to topic: ${MQTT_CONFIG.topic}`);
+                setTimeout(() => {
+                    restoreErrorTracking();
+                }, 2000);
             }
         });
     });
@@ -245,19 +273,34 @@ export const getMQTTStatus = () => {
 };
 
 // ==================== TIMEOUT HANDLING ====================
-
 const resetMachineTimeout = (machineId) => {
+    // Clear existing timeout
     if (machineTimeouts.has(machineId)) {
         clearTimeout(machineTimeouts.get(machineId));
+    }
+
+    if (machineErrorIntervals.has(machineId)) {
+        clearInterval(machineErrorIntervals.get(machineId));
+        machineErrorIntervals.delete(machineId);
+        console.log(`⏹️ [MQTT] Stopped error interval for ${machineId}`);
     }
 
     const timeoutId = setTimeout(async () => {
         console.log(`⏱️ [MQTT] Timeout for ${machineId} - No message in 10s`);
         
         try {
-            const updatedMachine = await updateMachineConnectionStatus(machineId, false, 'error');
+            // Update Machine status to 'error'
+            const updatedMachine = await updateMachineConnectionStatus(
+                machineId, 
+                false, 
+                'error'
+            );
             
+            const updatedData = await processErrorTimeout(machineId);
+            
+            // Emit socket events
             const io = getIO();
+            
             const disconnectEvent = {
                 machineId,
                 status: updatedMachine.status,
@@ -270,63 +313,223 @@ const resetMachineTimeout = (machineId) => {
             io.emit('machine:status-update', disconnectEvent);
             io.to(`machine-${machineId}`).emit('machine:status-update', disconnectEvent);
             
+            if (updatedData) {
+                const errorDataEvent = {
+                    machineId: updatedData.machineId,
+                    date: updatedData.date,
+                    status: updatedData.lastStatus,
+                    activeTime: parseFloat(updatedData.activeTime.toFixed(2)),
+                    stopTime: parseFloat(updatedData.stopTime.toFixed(2)),
+                    errorTime: parseFloat(updatedData.errorTime.toFixed(2)),
+                    totalEnergyConsumed: parseFloat(updatedData.totalEnergyConsumed.toFixed(3)),
+                    efficiency: updatedData.efficiency,
+                    lastUpdate: updatedData.lastUpdate
+                };
+                
+                io.emit('spray:realtime', errorDataEvent);
+                io.to(`machine-${machineId}`).emit('spray:realtime', errorDataEvent);
+            }
+            
+            const intervalId = setInterval(async () => {
+                try {
+                    console.log(`🔄 [MQTT] Updating errorTime for ${machineId}`);
+                    
+                    const updatedErrorData = await processErrorTimeout(machineId);
+                    
+                    if (updatedErrorData) {
+                        const errorUpdateEvent = {
+                            machineId: updatedErrorData.machineId,
+                            date: updatedErrorData.date,
+                            status: updatedErrorData.lastStatus,
+                            activeTime: parseFloat(updatedErrorData.activeTime.toFixed(2)),
+                            stopTime: parseFloat(updatedErrorData.stopTime.toFixed(2)),
+                            errorTime: parseFloat(updatedErrorData.errorTime.toFixed(2)),
+                            totalEnergyConsumed: parseFloat(updatedErrorData.totalEnergyConsumed.toFixed(3)),
+                            efficiency: updatedErrorData.efficiency,
+                            lastUpdate: updatedErrorData.lastUpdate
+                        };
+                        
+                        io.emit('spray:realtime', errorUpdateEvent);
+                        io.to(`machine-${machineId}`).emit('spray:realtime', errorUpdateEvent);
+                    }
+                } catch (error) {
+                    console.error(`❌ [MQTT] Error updating errorTime for ${machineId}:`, error);
+                }
+            }, ERROR_UPDATE_INTERVAL_MS);
+            
+            machineErrorIntervals.set(machineId, intervalId);
+            console.log(`▶️ [MQTT] Started error interval for ${machineId}`);
+            
+            // Create notification
             try {
                 const machine = await Machine.findOne({ machineId });
                 
-                if (!machine) {
-                    console.error(`❌ [MQTT] Machine not found: ${machineId}`);
-                    return;
+                if (machine) {
+                    await createAndBroadcastNotification({
+                        userId: machine.userId,
+                        machineId: machine.machineId,
+                        machineName: machine.name,
+                        type: 'mqtt_disconnected',
+                        severity: 'error',
+                        title: 'Mất kết nối MQTT',
+                        message: `Máy ${machine.name} không phản hồi trong 10 giây. Kiểm tra kết nối mạng.`,
+                        metadata: {
+                            lastHeartbeat: updatedMachine.lastHeartbeat,
+                            timeoutDuration: '10s'
+                        }
+                    });
                 }
-                
-                console.log(`📋 [MQTT] Creating notification for machine: ${machineId}`);
-                console.log(`   Machine name: ${machine.name}`);
-                console.log(`   Owner userId: ${machine.userId}`);
-                
-                await createAndBroadcastNotification({
-                    userId: machine.userId,
-                    machineId: machine.machineId,
-                    machineName: machine.name,
-                    type: 'mqtt_disconnected',
-                    severity: 'error',
-                    title: '⚠️ Mất kết nối MQTT',
-                    message: `${machine.name} không nhận được dữ liệu trong 10 giây. Vui lòng kiểm tra kết nối.`,
-                    source: 'MQTT Monitor'
-                });
-                
             } catch (notifError) {
-                console.error(`❌ [Notification] Error creating notification:`, notifError);
+                console.error(`❌ [MQTT] Notification Error:`, notifError);
             }
             
         } catch (error) {
-            console.error(`❌ [MQTT] Error handling timeout for ${machineId}:`, error);
+            console.error(`❌ [MQTT] Timeout handler error for ${machineId}:`, error);
         }
     }, MQTT_TIMEOUT_MS);
 
     machineTimeouts.set(machineId, timeoutId);
 };
-/**
- * Disconnect MQTT client
- * Graceful shutdown
- */
+
 export const disconnectMQTT = () => {
     // Clear all timeouts
     for (const [machineId, timeoutId] of machineTimeouts.entries()) {
         clearTimeout(timeoutId);
-        console.log(`🧹 Cleared timeout for ${machineId}`);
     }
     machineTimeouts.clear();
 
+    for (const [machineId, intervalId] of machineErrorIntervals.entries()) {
+        clearInterval(intervalId);
+    }
+    machineErrorIntervals.clear();
+
     if (mqttClient) {
+        console.log('🔌 Disconnecting MQTT...');
         mqttClient.end();
-        console.log('🔌 MQTT Client disconnected');
+        mqttClient = null;
     }
 };
 
+/**
+ * Start error tracking for a machine
+ * Called when:
+ * 1. Daily reset creates new shift (machine starts in error state)
+ * 2. Machine goes offline after timeout
+ * 
+ * @param {string} machineId - Machine identifier
+ */
+export const startErrorTracking = (machineId) => {
+    console.log(`🔴 [MQTT] Starting error tracking for ${machineId}`);
+    
+    // Clear existing timeout/interval
+    if (machineTimeouts.has(machineId)) {
+        clearTimeout(machineTimeouts.get(machineId));
+        machineTimeouts.delete(machineId);
+    }
+    
+    if (machineErrorIntervals.has(machineId)) {
+        clearInterval(machineErrorIntervals.get(machineId));
+        machineErrorIntervals.delete(machineId);
+    }
+    
+    // Immediately process first error timeout
+    (async () => {
+        try {
+            const updatedData = await processErrorTimeout(machineId);
+            
+            if (updatedData) {
+                const io = getIO();
+                
+                // Emit initial error state
+                const errorDataEvent = {
+                    machineId: updatedData.machineId,
+                    date: updatedData.date,
+                    status: updatedData.lastStatus,
+                    activeTime: parseFloat(updatedData.activeTime.toFixed(2)),
+                    stopTime: parseFloat(updatedData.stopTime.toFixed(2)),
+                    errorTime: parseFloat(updatedData.errorTime.toFixed(2)),
+                    totalEnergyConsumed: parseFloat(updatedData.totalEnergyConsumed.toFixed(3)),
+                    efficiency: updatedData.efficiency,
+                    lastUpdate: updatedData.lastUpdate
+                };
+                
+                io.emit('spray:realtime', errorDataEvent);
+                io.to(`machine-${machineId}`).emit('spray:realtime', errorDataEvent);
+            }
+            
+            // Start interval to update errorTime every 10 seconds
+            const intervalId = setInterval(async () => {
+                try {
+                    const io = getIO();
+                    console.log(`🔄 [MQTT] Updating errorTime for ${machineId}`);
+                    
+                    const updatedErrorData = await processErrorTimeout(machineId);
+                    
+                    if (updatedErrorData) {
+                        const errorUpdateEvent = {
+                            machineId: updatedErrorData.machineId,
+                            date: updatedErrorData.date,
+                            status: updatedErrorData.lastStatus,
+                            activeTime: parseFloat(updatedErrorData.activeTime.toFixed(2)),
+                            stopTime: parseFloat(updatedErrorData.stopTime.toFixed(2)),
+                            errorTime: parseFloat(updatedErrorData.errorTime.toFixed(2)),
+                            totalEnergyConsumed: parseFloat(updatedErrorData.totalEnergyConsumed.toFixed(3)),
+                            efficiency: updatedErrorData.efficiency,
+                            lastUpdate: updatedErrorData.lastUpdate
+                        };
+                        
+                        io.emit('spray:realtime', errorUpdateEvent);
+                        io.to(`machine-${machineId}`).emit('spray:realtime', errorUpdateEvent);
+                    }
+                } catch (error) {
+                    console.error(`❌ [MQTT] Error updating errorTime for ${machineId}:`, error);
+                }
+            }, ERROR_UPDATE_INTERVAL_MS);
+            
+            machineErrorIntervals.set(machineId, intervalId);
+            console.log(`▶️ [MQTT] Error interval started for ${machineId}`);
+            
+        } catch (error) {
+            console.error(`❌ [MQTT] Error starting error tracking for ${machineId}:`, error);
+        }
+    })();
+};
+
+export const restoreErrorTracking = async () => {
+    try {
+        console.log('🔄 [MQTT] Restoring error tracking for machines...');
+        
+        // Find all machines in error state
+        const errorMachines = await Machine.find({ 
+            status: 'error',
+            type: 'Spray Machine'
+        });
+        
+        console.log(`📊 [MQTT] Found ${errorMachines.length} machines in error state`);
+        
+        for (const machine of errorMachines) {
+            const todayData = await getTodayData(machine.machineId);
+            
+            // Only restore if there's data for today and lastStatus is -1 (error)
+            if (todayData && todayData.lastStatus === -1) {
+                console.log(`🔴 [MQTT] Restoring error tracking for ${machine.machineId}`);
+                startErrorTracking(machine.machineId);
+            }
+        }
+        
+        console.log('✅ [MQTT] Error tracking restoration completed');
+        
+    } catch (error) {
+        console.error('❌ [MQTT] Error restoring error tracking:', error);
+    }
+};
 // ==================== EXPORTS ====================
 
 export default {
     initializeMQTT,
     publishMQTT,
     disconnectMQTT,
-    getMQTTStatus
+    getMQTTStatus,
+    startErrorTracking,
+    restoreErrorTracking 
 };

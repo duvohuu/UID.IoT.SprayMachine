@@ -28,6 +28,13 @@ const SprayMachineDataSchema = new mongoose.Schema({
         min: 0,
         max: 24
     },
+
+    errorTime: {
+        type: Number,
+        default: 0,
+        min: 0,
+        max: 24
+    },
     
     efficiency: {
         type: Number,
@@ -57,7 +64,7 @@ const SprayMachineDataSchema = new mongoose.Schema({
     
     lastStatus: {
         type: Number,
-        enum: [0, 1],
+        enum: [-1, 0, 1],
         default: 0
     },
     

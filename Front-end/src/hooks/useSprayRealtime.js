@@ -198,6 +198,7 @@ export const useSprayRealtime = (machineId) => {
             ...prev,
             activeTime: socketData.activeTime ?? prev?.activeTime,
             stopTime: socketData.stopTime ?? prev?.stopTime,
+            errorTime:socketData.errorTime ?? prev?.errorTime,
             energyConsumption: socketData.totalEnergyConsumed ?? prev?.energyConsumption,
             sprayStatus: socketData.status ?? prev?.sprayStatus,
             powerConsumption: socketData.powerConsumption ?? prev?.powerConsumption,
@@ -211,6 +212,7 @@ export const useSprayRealtime = (machineId) => {
             
             const updatedActiveTime = socketData.activeTime ?? prev.operatingTime;
             const updatedStopTime = socketData.stopTime ?? prev.pausedTime;
+            const updatedErrorTime = socketData.errorTime ?? prev.errorTime;  
             const totalTime = updatedActiveTime + updatedStopTime;
             const efficiency = totalTime > 0 ? ((updatedActiveTime / totalTime) * 100).toFixed(1) : 0;
             
@@ -218,6 +220,7 @@ export const useSprayRealtime = (machineId) => {
                 ...prev,
                 operatingTime: updatedActiveTime,
                 pausedTime: updatedStopTime,
+                errorTime: updatedErrorTime,
                 energyConsumption: socketData.totalEnergyConsumed ?? prev.energyConsumption,
                 efficiency: parseFloat(efficiency)
             };
@@ -241,13 +244,16 @@ export const useSprayRealtime = (machineId) => {
                         oldOperatingTime: day.operatingTime,
                         newOperatingTime: socketData.activeTime,
                         oldPausedTime: day.pausedTime,
-                        newPausedTime: socketData.stopTime
+                        newPausedTime: socketData.stopTime,
+                        oldErrorTime: day.errorTime,  
+                        newErrorTime: socketData.errorTime
                     });
                     
                     return {
                         ...day,
                         operatingTime: socketData.activeTime ?? day.operatingTime,
                         pausedTime: socketData.stopTime ?? day.pausedTime,
+                        errorTime: socketData.errorTime ?? day.errorTime,  
                         energyConsumption: socketData.totalEnergyConsumed ?? day.energyConsumption
                     };
                 }
@@ -266,6 +272,7 @@ export const useSprayRealtime = (machineId) => {
                         ...day,
                         operatingTime: socketData.activeTime ?? day.operatingTime,
                         pausedTime: socketData.stopTime ?? day.pausedTime,
+                        errorTime: socketData.errorTime ?? day.errorTime,  
                         energyConsumption: socketData.totalEnergyConsumed ?? day.energyConsumption
                     };
                 }

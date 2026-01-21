@@ -1,5 +1,10 @@
-import { initializeMQTT, disconnectMQTT, getMQTTStatus } from '../iot/mqttClient.js';
 import { initializeDailyResetScheduler } from '../services/sprayMachineService.js'; 
+import { 
+    initializeMQTT, 
+    disconnectMQTT, 
+    getMQTTStatus,
+    restoreErrorTracking  
+} from '../iot/mqttClient.js';
 
 /**
  * ========================================
@@ -27,6 +32,11 @@ export const initializeServices = () => {
                 broker: status.broker,
                 topic: status.topic
             });
+
+            if (status.connected) {
+                console.log('🔄 Double-checking error tracking restoration...');
+                restoreErrorTracking();
+            }
         }, 5000);
     }, 2000);
 
