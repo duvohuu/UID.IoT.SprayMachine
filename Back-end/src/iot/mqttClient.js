@@ -31,8 +31,8 @@ const MQTT_CONFIG = {
 let mqttClient = null;
 const machineTimeouts = new Map();
 const machineErrorIntervals = new Map(); 
-const MQTT_TIMEOUT_MS = 10000; 
-const ERROR_UPDATE_INTERVAL_MS = 10000;
+const MQTT_TIMEOUT_MS = 30000; 
+const ERROR_UPDATE_INTERVAL_MS = 30000;
 
 // ==================== MESSAGE PROCESSING FUNCTIONS ====================
 

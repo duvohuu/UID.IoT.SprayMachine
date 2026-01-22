@@ -74,7 +74,6 @@ const SprayMachineDataDisplay = ({ dailyData, statistics, monthlyData, loading, 
         let displayValue = 'N/A';
         
         if (value !== null && value !== undefined) {
-            // Nếu là thời gian (operatingTime, pausedTime), format sang giờ:phút
             if (config.key === 'operatingTime' || config.key === 'pausedTime' || 
                 config.key === 'errorTime' || config.key === 'totalOperatingTime') {
                 displayValue = formatHoursToTime(value);
@@ -87,8 +86,12 @@ const SprayMachineDataDisplay = ({ dailyData, statistics, monthlyData, loading, 
         }
 
         return (
-            <Card sx={{ height: '100%' }}>
-                <CardContent>
+            <Card>
+                <CardContent sx={{ 
+                    display: 'flex', 
+                    flexDirection: 'column',
+                    minHeight: 160
+                }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
                         <Box sx={{ 
                             fontSize: '2rem', 
@@ -111,7 +114,7 @@ const SprayMachineDataDisplay = ({ dailyData, statistics, monthlyData, loading, 
                     >
                         {displayValue}
                     </Typography>
-                    <Typography variant="caption" color="text.secondary">
+                    <Typography variant="body2" color="text.secondary" sx={{ mt: 'auto' }}>
                         {config.description}
                     </Typography>
                 </CardContent>
@@ -398,31 +401,48 @@ const SprayMachineDataDisplay = ({ dailyData, statistics, monthlyData, loading, 
             <Typography variant="h5" gutterBottom sx={{ fontWeight: 'bold', mb: 2 }}>
                 📅 Thống kê hôm nay
             </Typography>
-            <Grid container spacing={2} sx={{ mb: 3 }}>
+            <Box sx={{ 
+                display: 'grid',
+                gridTemplateColumns: {
+                    xs: '1fr',
+                    sm: 'repeat(2, 1fr)',
+                    md: 'repeat(3, 1fr)'
+                },
+                gap: 2,
+                maxWidth: '900px', 
+                mb: 3
+            }}>
                 {dailyStats.map((stat) => (
-                    <Grid item xs={12} sm={6} md={3} key={stat.key}>
-                        <StatCard 
-                            config={stat} 
-                            value={dailyData[stat.key]} 
-                        />
-                    </Grid>
+                    <StatCard 
+                        key={stat.key}
+                        config={stat} 
+                        value={dailyData[stat.key]} 
+                    />
                 ))}
-            </Grid>
+            </Box>
 
-            {/* ==================== THỐNG KÊ 30 NGÀY ==================== */}
+            {/* ==================== THỐNG KÊ THÁNG HIỆN TẠI ==================== */}
             <Typography variant="h5" gutterBottom sx={{ fontWeight: 'bold', mb: 2 }}>
-                📈 Thống kê 30 ngày gần nhất
+                📈 Thống kê tháng hiện tại
             </Typography>
-            <Grid container spacing={2}>
+            <Box sx={{ 
+                display: 'grid',
+                gridTemplateColumns: {
+                    xs: '1fr',
+                    sm: 'repeat(2, 1fr)',
+                    md: 'repeat(3, 1fr)'
+                },
+                gap: 2,
+                maxWidth: '900px' 
+            }}>
                 {monthlyStats.map((stat) => (
-                    <Grid item xs={12} sm={6} md={4} key={stat.key}>
-                        <StatCard 
-                            config={stat} 
-                            value={statistics[stat.key]} 
-                        />
-                    </Grid>
+                    <StatCard 
+                        key={stat.key}
+                        config={stat} 
+                        value={statistics[stat.key]} 
+                    />
                 ))}
-            </Grid>
+            </Box>
         </Box>
     );
 };

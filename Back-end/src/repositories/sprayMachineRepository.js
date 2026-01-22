@@ -50,17 +50,6 @@ export const findDataByDate = async (machineId, date) => {
 
 // ==================== HISTORY & AGGREGATE DATA ====================
 
-/**
- * Get 30 days history
- */
-export const get30DaysHistory = async (machineId) => {
-    return await SprayMachineData
-        .find({ machineId })
-        .sort({ date: -1 })
-        .limit(TIME_CONFIG.HISTORY_DAYS_LIMIT)
-        .select('-__v -createdAt -updatedAt')
-        .lean();
-};
 
 /**
  * Get current week data

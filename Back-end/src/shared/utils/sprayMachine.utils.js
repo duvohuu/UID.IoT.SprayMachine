@@ -63,6 +63,7 @@ export const calculateStatistics = (history) => {
         return {
             totalActiveTime: 0,
             totalStopTime: 0,
+            totalErrorTime: 0,
             totalEnergyConsumed: 0,
             averageEfficiency: 0,
             daysCount: 0
@@ -71,15 +72,19 @@ export const calculateStatistics = (history) => {
 
     const totalActiveTime = history.reduce((sum, day) => sum + day.activeTime, 0);
     const totalStopTime = history.reduce((sum, day) => sum + day.stopTime, 0);
+    const totalErrorTime = history.reduce((sum, day) => sum + day.errorTime, 0);
     const totalEnergyConsumed = history.reduce((sum, day) => sum + day.totalEnergyConsumed, 0);
     const totalWorkTime = totalActiveTime + totalStopTime;
     const averageEfficiency = totalWorkTime > 0 ? (totalActiveTime / totalWorkTime) * 100 : 0;
+    const activeDays = history.filter(day => day.hasData);
+
 
     return {
         totalActiveTime: parseFloat(totalActiveTime.toFixed(2)),
         totalStopTime: parseFloat(totalStopTime.toFixed(2)),
+        totalErrorTime: parseFloat(totalErrorTime.toFixed(2)),
         totalEnergyConsumed: parseFloat(totalEnergyConsumed.toFixed(2)),
         averageEfficiency: parseFloat(averageEfficiency.toFixed(1)),
-        daysCount: history.length
+        daysCount: activeDays.length  
     };
 };

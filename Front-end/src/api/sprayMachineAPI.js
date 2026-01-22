@@ -51,36 +51,6 @@ export const getSprayDailyData = async (machineId) => {
     }
 };
 
-/**
- * Lấy dữ liệu lịch sử 30 ngày gần nhất
- * Bao gồm:
- * - Năng lượng tiêu thụ theo ngày
- * - % thời gian chạy theo ngày
- * - Số sản phẩm phun theo ngày
- * @param {string} machineId - ID của máy
- * @param {Object} params - Query parameters
- * @param {number} params.limit - Số ngày lấy (default: 30)
- * @returns {Promise<{success: boolean, data?: any, message?: string}>}
- */
-export const getSpray30DaysHistory = async (machineId, params = {}) => {
-    try {
-        const queryParams = new URLSearchParams({
-            limit: params.limit || 30,
-            ...params
-        });
-
-        const response = await axios.get(
-            `${API_URL}/api/spray-machine/history/${machineId}?${queryParams}`, 
-        );
-        return { success: true, data: response.data };
-    } catch (err) {
-        console.error('❌ Error fetching spray 30 days history:', err);
-        return { 
-            success: false, 
-            message: err.response?.data?.message || "Lỗi lấy dữ liệu 30 ngày Spray Machine" 
-        };
-    }
-};
 
 /**
  * Lấy thống kê tổng hợp của Spray Machine
@@ -178,7 +148,6 @@ export const getSprayMonthlyData = async (machineId) => {
 export default {
     getSprayRealtimeData,
     getSprayDailyData,
-    getSpray30DaysHistory,
     getSprayStatistics,
     getSprayWeeklyData,
     getSprayMonthlyData, 

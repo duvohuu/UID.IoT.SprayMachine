@@ -70,7 +70,25 @@ export const monthlyStats = [
         unit: 'giờ',
         color: '#4caf50',
         decimals: 2,
-        description: '30 ngày gần nhất'
+        description: 'Tháng hiện tại'
+    },
+    {
+        key: 'totalPausedTime',
+        label: 'Tổng giờ dừng',
+        icon: '⏸️',
+        unit: 'giờ',
+        color: '#ff9800',
+        decimals: 2,
+        description: 'Tháng hiện tại'
+    },
+    {
+        key: 'totalErrorTime',
+        label: 'Tổng giờ mất kết nối',
+        icon: '❌',
+        unit: 'giờ',
+        color: '#f44336',
+        decimals: 2,
+        description: 'Tháng hiện tại'
     },
     {
         key: 'totalEnergyConsumed',
@@ -79,7 +97,7 @@ export const monthlyStats = [
         unit: 'kWh',
         color: '#2196f3',
         decimals: 2,
-        description: '30 ngày gần nhất'
+        description: 'Tháng hiện tại'
     },
     {
         key: 'averageOperatingPercentage',
@@ -88,7 +106,16 @@ export const monthlyStats = [
         unit: '%',
         color: '#9c27b0',
         decimals: 1,
-        description: 'Trung bình 30 ngày'
+        description: 'Tháng hiện tại'
+    },
+    {
+        key: 'daysCount',
+        label: 'Số ngày hoạt động',
+        icon: '📅',
+        unit: 'ngày',
+        color: '#ff9800',
+        decimals: 0,
+        description: 'Tháng hiện tại'  
     }
 ];
 

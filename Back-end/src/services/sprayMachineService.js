@@ -2,7 +2,7 @@ import cron from 'node-cron';
 import { getIO } from '../config/socket.js';
 import { WORK_SHIFT, TIME_CONFIG } from '../shared/constant/workShift.constant.js';
 import { isWithinWorkShift, getVietnamDateString, getWorkStartTime } from '../shared/utils/datetime.util.js';
-import { getTodayData, getLatestData, saveData, get30DaysHistory, getCurrentWeekData, getCurrentMonthData, getAllSprayMachines, createDailyData, findDataByDate } from '../repositories/sprayMachineRepository.js';
+import { getTodayData, getLatestData, saveData, getCurrentWeekData, getCurrentMonthData, getAllSprayMachines, createDailyData, findDataByDate } from '../repositories/sprayMachineRepository.js';
 import { calculateEnergyConsumption, calculateEfficiency, updateMachineTime, validateAndClampTimeValues, calculateStatistics } from '../shared/utils/sprayMachine.utils.js';
 import { startErrorTracking } from '../iot/mqttClient.js';
 
@@ -126,7 +126,7 @@ export const getLatestDataOrCreate = async (machineId) => {
  * Get statistics for last 30 days
  */
 export const getStatistics = async (machineId) => {
-    const history = await get30DaysHistory(machineId);
+    const history = await getCurrentMonthData(machineId);
     return calculateStatistics(history);
 };
 
@@ -246,12 +246,6 @@ export const getSprayTodayData = async (machineId) => {
     return await getTodayData(machineId);
 };
 
-/**
- * Get 30 days history (wrapper for controller)
- */
-export const getSpray30DaysHistory = async (machineId) => {
-    return await get30DaysHistory(machineId);
-};
 
 /**
  * Get current week data (wrapper for controller)

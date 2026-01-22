@@ -3,7 +3,6 @@ import {
     getSprayRealtimeData, 
     getSprayDailyData, 
     getSprayStatistics, 
-    getSpray30DaysHistory,
     getSprayPieChartData,
     getSprayWeeklyData,
     getSprayMonthlyData
@@ -22,7 +21,6 @@ export const useSprayRealtime = (machineId) => {
     const [dailyData, setDailyData] = useState(null);
     const [statistics, setStatistics] = useState(null);
     const [pieChartData, setPieChartData] = useState(null);
-    const [historyData, setHistoryData] = useState([]);
     const [weeklyData, setWeeklyData] = useState([]);
     const [monthlyData, setMonthlyData] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -141,25 +139,6 @@ export const useSprayRealtime = (machineId) => {
         }
     }, [machineId]);
 
-    const fetchHistoryData = useCallback(async () => {
-        if (!machineId) return;
-        
-        try {
-            const result = await getSpray30DaysHistory(machineId);
-            
-            if (result.success && result.data) {
-                setHistoryData(result.data);
-                setError(null);
-            } else {
-                console.error('❌ [useSprayRealtime] History failed:', result.message);
-                setError(result.message);
-            }
-        } catch (err) {
-            console.error('❌ [useSprayRealtime] History error:', err);
-            setError(err.message || 'Lỗi tải lịch sử');
-        }
-    }, [machineId]);
-
     // ==================== FETCH ALL DATA (Initial load) ====================
     
     const fetchAllData = useCallback(async () => {
@@ -172,7 +151,6 @@ export const useSprayRealtime = (machineId) => {
                 fetchDailyData(),
                 fetchPieChartData(),
                 fetchStatistics(),
-                fetchHistoryData(),
                 fetchWeeklyData(),
                 fetchMonthlyData()
             ]);
@@ -183,7 +161,7 @@ export const useSprayRealtime = (machineId) => {
         } finally {
             setLoading(false);
         }
-    }, [fetchRealtimeData, fetchDailyData, fetchPieChartData, fetchStatistics, fetchHistoryData, fetchWeeklyData, fetchMonthlyData]);
+    }, [fetchRealtimeData, fetchDailyData, fetchPieChartData, fetchStatistics, fetchWeeklyData, fetchMonthlyData]);
     
     /**
      * Update realtime data from socket event
@@ -304,9 +282,8 @@ export const useSprayRealtime = (machineId) => {
     const refreshHistoricalData = useCallback(() => {
         console.log('🔄 [useSprayRealtime] Manual refresh historical data');
         fetchStatistics();
-        fetchHistoryData();
         fetchWeeklyData(); 
-    }, [fetchStatistics, fetchHistoryData, fetchWeeklyData]);
+    }, [fetchStatistics, fetchWeeklyData]);
 
     // ==================== INITIAL LOAD (Only once) ====================
     
@@ -333,7 +310,6 @@ export const useSprayRealtime = (machineId) => {
         dailyData,
         statistics,
         pieChartData,
-        historyData,
         weeklyData,
         monthlyData,
         

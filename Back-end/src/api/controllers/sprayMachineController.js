@@ -9,7 +9,7 @@ export const getSprayRealtimeData = async (req, res) => {
         const { machineId } = req.params;
         // console.log(`📊 [Controller] GET Realtime for: ${machineId}`);
         
-        const todayData = await SprayMachineService.getLatestData(machineId);
+        const todayData = await SprayMachineService.getSprayLatestData(machineId);
         
         const realtimeData = {
             sprayStatus: todayData.lastStatus,
@@ -55,7 +55,7 @@ export const getSprayDailyData = async (req, res) => {
         const { machineId } = req.params;
         // console.log(`📅 [Controller] GET Daily for: ${machineId}`);
         
-        const data = await SprayMachineService.getLatestData(machineId);
+        const data = await SprayMachineService.getSprayLatestData(machineId);
         
         const efficiency = (data.activeTime / (data.activeTime + data.stopTime)) * 100;
         
@@ -90,36 +90,6 @@ export const getSprayDailyData = async (req, res) => {
     }
 };
 
-/**
- * GET /api/spray-machine/history/:machineId
- */
-export const getSpray30DaysHistory = async (req, res) => {
-    try {
-        const { machineId } = req.params;
-        // console.log(`📜 [Controller] GET History for: ${machineId}`);
-        
-        const history = await SprayMachineService.get30DaysHistory(machineId);
-        
-        const formattedHistory = history.map(day => ({
-            date: day.date,
-            operatingTime: parseFloat(day.activeTime.toFixed(2)),        
-            pausedTime: parseFloat(day.stopTime.toFixed(2)),  
-            errorTime: parseFloat(day.errorTime.toFixed(2)),
-            energyConsumption: parseFloat(day.totalEnergyConsumed.toFixed(3)),
-            efficiency: day.efficiency
-        }));
-        
-        res.json(formattedHistory);
-        
-    } catch (error) {
-        console.error('❌ [Controller] History Error:', error);
-        res.status(500).json({ 
-            success: false,
-            message: 'Error fetching spray history', 
-            error: error.message 
-        });
-    }
-};
 
 /**
  * GET /api/spray-machine/weekly/:machineId
@@ -129,7 +99,7 @@ export const getSprayWeeklyData = async (req, res) => {
         const { machineId } = req.params;
         // console.log(`📊 [Controller] GET Weekly data for: ${machineId}`);
         
-        const weeklyData = await SprayMachineService.getCurrentWeekData(machineId);
+        const weeklyData = await SprayMachineService.getSprayCurrentWeekData(machineId);
         
         const formattedData = weeklyData.map(day => ({
             date: day.date,
@@ -160,7 +130,7 @@ export const getSprayMonthlyData = async (req, res) => {
         const { machineId } = req.params;
         // console.log(`📊 [Controller] GET Monthly data for: ${machineId}`);
         
-        const monthlyData = await SprayMachineService.getCurrentMonthData(machineId);
+        const monthlyData = await SprayMachineService.getSprayCurrentMonthData(machineId);
         
         const formattedData = monthlyData.map(day => ({
             date: day.date,
@@ -197,6 +167,8 @@ export const getSprayStatistics = async (req, res) => {
         // Stats đã dùng DB data, không cần sửa
         const mappedStats = {
             totalOperatingTime: parseFloat(stats.totalActiveTime.toFixed(2)),
+            totalPausedTime: parseFloat(stats.totalStopTime.toFixed(2)),
+            totalErrorTime: parseFloat(stats.totalErrorTime.toFixed(2)),
             totalEnergyConsumed: parseFloat(stats.totalEnergyConsumed.toFixed(2)),
             averageOperatingPercentage: parseFloat(stats.averageEfficiency.toFixed(1)),
             daysCount: stats.daysCount
@@ -222,7 +194,7 @@ export const getSprayPieChartData = async (req, res) => {
         const { machineId } = req.params;
         // console.log(`📊 [Controller] GET Pie Chart for: ${machineId}`);
         
-        const data = await SprayMachineService.getLatestData(machineId);
+        const data = await SprayMachineService.getSprayLatestData(machineId);
         
         const pieChartData = {
             operatingTime: parseFloat(data.activeTime.toFixed(2)),       
