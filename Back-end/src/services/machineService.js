@@ -1,5 +1,4 @@
-import Machine from '../models/Machine.model.js';
-import SprayMachineData from '../models/SprayMachineData.model.js';
+import * as machineRepository from '../repositories/machineRepository.js';
 import mongoose from 'mongoose';
 
 /**
@@ -28,7 +27,7 @@ export const validateMachineData = (machineData) => {
  * Check if machine ID already exists
  */
 export const checkMachineExists = async (machineId) => {
-    const existingMachine = await Machine.findOne({ machineId });
+    const existingMachine = await machineRepository.checkMachineExists(machineId);
     if (existingMachine) {
         throw new Error('Machine ID already exists');
     }
@@ -41,26 +40,14 @@ export const checkMachineExists = async (machineId) => {
  * Find machine by ID (supports both _id and machineId)
  */
 export const findMachineById = async (id) => {
-    let machine;
-
-    // Try finding by MongoDB _id first
-    if (mongoose.Types.ObjectId.isValid(id)) {
-        machine = await Machine.findById(id);
-    }
-    
-    // If not found, try machineId
-    if (!machine) {
-        machine = await Machine.findOne({ machineId: id });
-    }
-
-    return machine;
+    return await machineRepository.findMachineById(id);
 };
 
 /**
  * Find machine by machineId only
  */
 export const findMachineByMachineId = async (machineId) => {
-    return await Machine.findOne({ machineId });
+    return await machineRepository.findMachineByMachineId(machineId);
 };
 
 // ==================== ACCESS CONTROL ====================
@@ -107,18 +94,14 @@ export const getMachines = async (userId, userRole, filters = {}) => {
     if (filters.status) query.status = filters.status;
     if (filters.isConnected !== undefined) query.isConnected = filters.isConnected;
     
-    const machines = await Machine.find(query)
-        .select('-__v')
-        .sort({ createdAt: -1 });
-    
-    return machines;
+    return await machineRepository.getMachines(query);
 };
 
 /**
  * Get machine by ID with access check
  */
 export const getMachineById = async (id, userId, userRole) => {
-    const machine = await findMachineById(id);
+    const machine = await machineRepository.findMachineById(id);
     
     if (!machine) {
         throw new Error('Machine not found');
@@ -143,7 +126,7 @@ export const createMachine = async (machineData, requestUserId) => {
     await checkMachineExists(machineId);
     
     // Create machine with defaults
-    const machine = await Machine.create({
+    const machine = await machineRepository.createMachine({
         machineId,
         name,
         type,
@@ -175,25 +158,7 @@ export const updateMachine = async (id, updateData) => {
         updates.isConnected = updateData.isConnected;
     }
     
-    let machine;
-    
-    // Try updating by MongoDB _id first
-    if (mongoose.Types.ObjectId.isValid(id)) {
-        machine = await Machine.findByIdAndUpdate(
-            id,
-            updates,
-            { new: true, runValidators: true }
-        );
-    }
-    
-    // If not found, try machineId
-    if (!machine) {
-        machine = await Machine.findOneAndUpdate(
-            { machineId: id },
-            updates,
-            { new: true, runValidators: true }
-        );
-    }
+    const machine = await machineRepository.updateMachine(id, updates);
     
     if (!machine) {
         throw new Error('Machine not found');
@@ -205,38 +170,12 @@ export const updateMachine = async (id, updateData) => {
 /**
  * Delete machine with cleanup
  */
-export const deleteMachine = async (id) => {    
-    let machine;
-    
-    // Try deleting by MongoDB _id first
-    if (mongoose.Types.ObjectId.isValid(id)) {
-        const existingMachine = await Machine.findById(id);        
-        if (existingMachine) {
-            console.log(`   Found machine: ${existingMachine.name} (${existingMachine.machineId})`);
-            // Cleanup related data
-            await SprayMachineData.deleteMany({ machineId: existingMachine.machineId });
-        }
-        
-        machine = await Machine.findByIdAndDelete(id);
-    }
-    
-    // If not found, try machineId
-    if (!machine) {
-        console.log('   Not found by _id, trying machineId...');
-        const existingByMachineId = await Machine.findOne({ machineId: id });
-        console.log(`   Machine exists with machineId? ${existingByMachineId ? 'YES' : 'NO'}`);
-        
-        if (existingByMachineId) {
-            // Cleanup related data
-            await SprayMachineData.deleteMany({ machineId: existingByMachineId.machineId });
-        }
-        
-        machine = await Machine.findOneAndDelete({ machineId: id });
-    }
+export const deleteMachine = async (id) => {
+    const machine = await machineRepository.deleteMachine(id);
     
     if (!machine) {
         console.log('   Machine not found in database');
-        const totalCount = await Machine.countDocuments();
+        const totalCount = await Machine.countDocuments(); // Note: This could be moved to repo if needed, but kept here for simplicity
         console.log(`   Total machines in DB: ${totalCount}`);
         throw new Error('Machine not found');
     }
@@ -252,37 +191,14 @@ export const deleteMachine = async (id) => {
  * Verify machine exists and optionally check type
  */
 export const verifyMachine = async (machineId, type = null) => {
-    const machine = await Machine.findOne({ machineId });
-    
-    if (!machine) {
-        throw new Error(`Machine ${machineId} not found`);
-    }
-    
-    if (type && machine.type !== type) {
-        throw new Error(`Machine ${machineId} is not a ${type} machine`);
-    }
-    
-    return machine;
+    return await machineRepository.verifyMachine(machineId, type);
 };
 
 /**
  * Update machine connection status
  */
 export const updateMachineConnectionStatus = async (machineId, isConnected, machineStatus = null) => {
-    const updates = { 
-        isConnected,
-        lastConnected: isConnected ? new Date() : undefined
-    };
-    
-    if (machineStatus !== null && machineStatus !== undefined) {
-        updates.status = machineStatus;
-    }
-    
-    const machine = await Machine.findOneAndUpdate(
-        { machineId },
-        updates,
-        { new: true }
-    );
+    const machine = await machineRepository.updateMachineConnectionStatus(machineId, isConnected, machineStatus);
     
     if (!machine) {
         throw new Error(`Machine ${machineId} not found`);
@@ -297,11 +213,7 @@ export const updateMachineConnectionStatus = async (machineId, isConnected, mach
  * Update machine status only
  */
 export const updateMachineStatus = async (machineId, status) => {
-    const machine = await Machine.findOneAndUpdate(
-        { machineId },
-        { status },
-        { new: true }
-    );
+    const machine = await machineRepository.updateMachineStatus(machineId, status);
     
     if (!machine) {
         throw new Error(`Machine ${machineId} not found`);

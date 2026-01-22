@@ -7,6 +7,15 @@ import { calculateEnergyConsumption, calculateEfficiency, updateMachineTime, val
 import { startErrorTracking } from '../iot/mqttClient.js';
 
 /**
+ * ========================================
+ * SPRAY MACHINE SERVICE
+ * ========================================
+ * Business logic for Spray Machine operations
+ */
+
+// ==================== MQTT & DATA PROCESSING ====================
+
+/**
  * Process MQTT update
  */
 export const processMQTTUpdate = async (machineId, mqttData) => {
@@ -65,6 +74,7 @@ export const processErrorTimeout = async (machineId) => {
             data.errorTime += hoursSinceLastUpdate;
             data = validateAndClampTimeValues(data);
             data.efficiency = calculateEfficiency(data.activeTime, data.stopTime);
+            data.lastStatusChangeTime = now;
             data.lastUpdate = now;
             return await saveData(data);
         }
@@ -75,6 +85,43 @@ export const processErrorTimeout = async (machineId) => {
     }
 };
 
+// ==================== DATA RETRIEVAL ====================
+
+/**
+ * Get latest data (or create if not exists)
+ */
+export const getLatestDataOrCreate = async (machineId) => {
+    const today = getVietnamDateString();
+    let latestData = await getLatestData(machineId);
+
+    if (!latestData || latestData.date < today) {
+        const existingToday = await getTodayData(machineId);
+        if (existingToday) return existingToday;
+
+        // Create new data for today
+        const yesterday = getVietnamDateString(-1);
+        const yesterdayData = await findDataByDate(machineId, yesterday);
+        const energyAtStartOfDay = yesterdayData?.currentPowerConsumption || 0;
+        const workStartTime = getWorkStartTime(today);
+
+        latestData = await createDailyData({
+            machineId,
+            date: today,
+            activeTime: 0,
+            stopTime: 0,
+            errorTime: 0,
+            totalEnergyConsumed: 0,
+            efficiency: 0,
+            energyAtStartOfDay,
+            currentPowerConsumption: energyAtStartOfDay,
+            lastStatus: 0,
+            lastStatusChangeTime: workStartTime,
+            lastUpdate: new Date()
+        });
+    }
+    return latestData;
+};
+
 /**
  * Get statistics for last 30 days
  */
@@ -82,6 +129,8 @@ export const getStatistics = async (machineId) => {
     const history = await get30DaysHistory(machineId);
     return calculateStatistics(history);
 };
+
+// ==================== RESET & SCHEDULING ====================
 
 /**
  * Reset daily data - Create new data for target date
@@ -181,6 +230,39 @@ export const initializeDailyResetScheduler = () => {
 
     return cronJob;
 };
+// ==================== WRAPPER FUNCTIONS FOR CONTROLLER ====================
 
-// Export other functions as needed
-export { getLatestData, getCurrentWeekData, getCurrentMonthData };
+/**
+ * Get latest data (wrapper for controller)
+ */
+export const getSprayLatestData = async (machineId) => {
+    return await getLatestData(machineId);
+};
+
+/**
+ * Get today's data (wrapper for external use, e.g., MQTT)
+ */
+export const getSprayTodayData = async (machineId) => {
+    return await getTodayData(machineId);
+};
+
+/**
+ * Get 30 days history (wrapper for controller)
+ */
+export const getSpray30DaysHistory = async (machineId) => {
+    return await get30DaysHistory(machineId);
+};
+
+/**
+ * Get current week data (wrapper for controller)
+ */
+export const getSprayCurrentWeekData = async (machineId) => {
+    return await getCurrentWeekData(machineId);
+};
+
+/**
+ * Get current month data (wrapper for controller)
+ */
+export const getSprayCurrentMonthData = async (machineId) => {
+    return await getCurrentMonthData(machineId);
+};

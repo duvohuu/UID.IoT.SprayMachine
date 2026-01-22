@@ -1,8 +1,16 @@
-// filepath: /run/media/vhdu/WORK/Project/Project_11_UIDLab_IoTSprayMachine/Back-end/src/repositories/sprayMachineRepository.js
 import SprayMachineData from '../models/SprayMachineData.model.js';
 import Machine from '../models/Machine.model.js';
 import { TIME_CONFIG } from '../shared/constant/workShift.constant.js';
 import { getVietnamDateString, getMondayOfWeek, getWeekDates, getDayOfWeekName } from '../shared/utils/datetime.util.js';
+
+/**
+ * ========================================
+ * SPRAY MACHINE REPOSITORY
+ * ========================================
+ * Data access layer for SprayMachineData operations
+ */
+
+// ==================== BASIC DATA OPERATIONS ====================
 
 /**
  * Get today's data for a machine
@@ -13,38 +21,10 @@ export const getTodayData = async (machineId) => {
 };
 
 /**
- * Get latest data (or create if not exists)
+ * Get latest data for a machine (most recent by date)
  */
 export const getLatestData = async (machineId) => {
-    const today = getVietnamDateString();
-    let latestData = await SprayMachineData.findOne({ machineId }).sort({ date: -1 });
-
-    if (!latestData || latestData.date < today) {
-        const existingToday = await SprayMachineData.findOne({ machineId, date: today });
-        if (existingToday) return existingToday;
-
-        // Create new data (logic moved from service)
-        const yesterday = getVietnamDateString(-1);
-        const yesterdayData = await SprayMachineData.findOne({ machineId, date: yesterday });
-        const energyAtStartOfDay = yesterdayData?.currentPowerConsumption || 0;
-        const workStartTime = getWorkStartTime(today); 
-
-        latestData = await SprayMachineData.create({
-            machineId,
-            date: today,
-            activeTime: 0,
-            stopTime: 0,
-            errorTime: 0,
-            totalEnergyConsumed: 0,
-            efficiency: 0,
-            energyAtStartOfDay,
-            currentPowerConsumption: energyAtStartOfDay,
-            lastStatus: 0,
-            lastStatusChangeTime: workStartTime,
-            lastUpdate: new Date()
-        });
-    }
-    return latestData;
+    return await SprayMachineData.findOne({ machineId }).sort({ date: -1 });
 };
 
 /**
@@ -53,6 +33,22 @@ export const getLatestData = async (machineId) => {
 export const saveData = async (data) => {
     return await data.save();
 };
+
+/**
+ * Create new daily data
+ */
+export const createDailyData = async (data) => {
+    return await SprayMachineData.create(data);
+};
+
+/**
+ * Find data by specific date
+ */
+export const findDataByDate = async (machineId, date) => {
+    return await SprayMachineData.findOne({ machineId, date });
+};
+
+// ==================== HISTORY & AGGREGATE DATA ====================
 
 /**
  * Get 30 days history
@@ -127,23 +123,11 @@ export const getCurrentMonthData = async (machineId) => {
     return result;
 };
 
+// ==================== MACHINE OPERATIONS ====================
+
 /**
  * Get all spray machines
  */
 export const getAllSprayMachines = async () => {
     return await Machine.find({ type: 'Spray Machine' });
-};
-
-/**
- * Create new daily data
- */
-export const createDailyData = async (data) => {
-    return await SprayMachineData.create(data);
-};
-
-/**
- * Find data by date
- */
-export const findDataByDate = async (machineId, date) => {
-    return await SprayMachineData.findOne({ machineId, date });
 };

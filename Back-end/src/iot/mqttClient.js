@@ -6,10 +6,10 @@ import {
 } from '../services/machineService.js';
 import { 
     processMQTTUpdate,
-    processErrorTimeout
+    processErrorTimeout,
+    getSprayTodayData,
 } from '../services/sprayMachineService.js';
 import { createAndBroadcastNotification } from '../services/notificationService.js';
-import { getTodayData } from '../repositories/sprayMachineRepository.js';
 import Machine from '../models/Machine.model.js';
 
 /**
@@ -505,7 +505,7 @@ export const restoreErrorTracking = async () => {
         console.log(`📊 [MQTT] Found ${errorMachines.length} machines in error state`);
         
         for (const machine of errorMachines) {
-            const todayData = await getTodayData(machine.machineId);
+            const todayData = await getSprayTodayData(machine.machineId);
             
             // Only restore if there's data for today and lastStatus is -1 (error)
             if (todayData && todayData.lastStatus === -1) {
