@@ -1,5 +1,6 @@
 import * as SprayMachineService from '../../services/sprayMachineService.js';
 import { getMQTTStatus } from '../../iot/mqttClient.js';
+import { getLatestData, get30DaysHistory, getCurrentWeekData, getCurrentMonthData } from '../../repositories/sprayMachineRepository.js'; 
 
 /**
  * GET /api/spray-machine/realtime/:machineId
@@ -9,7 +10,7 @@ export const getSprayRealtimeData = async (req, res) => {
         const { machineId } = req.params;
         // console.log(`📊 [Controller] GET Realtime for: ${machineId}`);
         
-        const todayData = await SprayMachineService.getLatestData(machineId);
+        const todayData = await getLatestData(machineId);
         
         const realtimeData = {
             sprayStatus: todayData.lastStatus,
@@ -55,7 +56,7 @@ export const getSprayDailyData = async (req, res) => {
         const { machineId } = req.params;
         // console.log(`📅 [Controller] GET Daily for: ${machineId}`);
         
-        const data = await SprayMachineService.getLatestData(machineId);
+        const data = await getLatestData(machineId);
         
         const efficiency = (data.activeTime / (data.activeTime + data.stopTime)) * 100;
         
@@ -98,7 +99,7 @@ export const getSpray30DaysHistory = async (req, res) => {
         const { machineId } = req.params;
         // console.log(`📜 [Controller] GET History for: ${machineId}`);
         
-        const history = await SprayMachineService.get30DaysHistory(machineId);
+        const history = await get30DaysHistory(machineId);
         
         const formattedHistory = history.map(day => ({
             date: day.date,
@@ -127,9 +128,9 @@ export const getSpray30DaysHistory = async (req, res) => {
 export const getSprayWeeklyData = async (req, res) => {
     try {
         const { machineId } = req.params;
-        console.log(`📊 [Controller] GET Weekly data for: ${machineId}`);
+        // console.log(`📊 [Controller] GET Weekly data for: ${machineId}`);
         
-        const weeklyData = await SprayMachineService.getCurrentWeekData(machineId);
+        const weeklyData = await getCurrentWeekData(machineId);
         
         const formattedData = weeklyData.map(day => ({
             date: day.date,
@@ -158,9 +159,9 @@ export const getSprayWeeklyData = async (req, res) => {
 export const getSprayMonthlyData = async (req, res) => {
     try {
         const { machineId } = req.params;
-        console.log(`📊 [Controller] GET Monthly data for: ${machineId}`);
+        // console.log(`📊 [Controller] GET Monthly data for: ${machineId}`);
         
-        const monthlyData = await SprayMachineService.getCurrentMonthData(machineId);
+        const monthlyData = await getCurrentMonthData(machineId);
         
         const formattedData = monthlyData.map(day => ({
             date: day.date,
@@ -222,7 +223,7 @@ export const getSprayPieChartData = async (req, res) => {
         const { machineId } = req.params;
         // console.log(`📊 [Controller] GET Pie Chart for: ${machineId}`);
         
-        const data = await SprayMachineService.getLatestData(machineId);
+        const data = await getLatestData(machineId);
         
         const pieChartData = {
             operatingTime: parseFloat(data.activeTime.toFixed(2)),       

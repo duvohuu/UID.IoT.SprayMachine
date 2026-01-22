@@ -6,13 +6,10 @@ import {
 } from '../services/machineService.js';
 import { 
     processMQTTUpdate,
-    processErrorTimeout,
-    getTodayData 
+    processErrorTimeout
 } from '../services/sprayMachineService.js';
-import { 
-    createNotification, 
-    createAndBroadcastNotification 
-} from '../services/notificationService.js';
+import { createAndBroadcastNotification } from '../services/notificationService.js';
+import { getTodayData } from '../repositories/sprayMachineRepository.js';
 import Machine from '../models/Machine.model.js';
 
 /**
