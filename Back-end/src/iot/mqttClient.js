@@ -520,6 +520,28 @@ export const restoreErrorTracking = async () => {
         console.error('❌ [MQTT] Error restoring error tracking:', error);
     }
 };
+
+export const initializeTimeouts = async () => {
+    try {
+        console.log('⏱️ [MQTT] Initializing timeouts for connected machines...');
+        
+        const connectedMachines = await Machine.find({ 
+            type: 'Spray Machine', 
+            isConnected: true 
+        });
+        
+        console.log(`📊 [MQTT] Found ${connectedMachines.length} connected Spray Machines`);
+        
+        for (const machine of connectedMachines) {
+            resetMachineTimeout(machine.machineId);
+            console.log(`⏱️ [MQTT] Timeout initialized for ${machine.machineId}`);
+        }
+        
+        console.log('✅ [MQTT] Timeouts initialized for all connected machines');
+    } catch (error) {
+        console.error('❌ [MQTT] Error initializing timeouts:', error);
+    }
+};
 // ==================== EXPORTS ====================
 
 export default {
@@ -528,5 +550,6 @@ export default {
     disconnectMQTT,
     getMQTTStatus,
     startErrorTracking,
-    restoreErrorTracking 
+    restoreErrorTracking,
+    initializeTimeouts 
 };

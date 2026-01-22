@@ -2,7 +2,7 @@ export const WORK_SHIFT = {
     HOURS_PER_DAY: 12,
     START_HOUR: 6,
     START_MINUTE: 0,
-    END_HOUR: 20,
+    END_HOUR: 18,
     END_MINUTE: 0,
     DAYS_PER_WEEK: 7  
 };

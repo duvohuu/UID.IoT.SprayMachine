@@ -3,7 +3,8 @@ import {
     initializeMQTT, 
     disconnectMQTT, 
     getMQTTStatus,
-    restoreErrorTracking  
+    restoreErrorTracking,
+    initializeTimeouts  
 } from '../iot/mqttClient.js';
 
 /**
@@ -36,6 +37,7 @@ export const initializeServices = () => {
             if (status.connected) {
                 console.log('🔄 Double-checking error tracking restoration...');
                 restoreErrorTracking();
+                initializeTimeouts(); 
             }
         }, 5000);
     }, 2000);
